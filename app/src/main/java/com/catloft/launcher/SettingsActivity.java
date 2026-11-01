@@ -5,7 +5,9 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
@@ -36,12 +38,14 @@ public class SettingsActivity extends Activity {
 
     private TextView sumIconScale, sumDim, sumBlur, sumKiller, sumSchedule,
             sumTarget, sumApps, sumSysApps, sumHider, sumTiles, sumColor, sumSlide,
-            sumRotate, sumSwipeUp, sumDoubleTap, sumHomeKey, sumBackKey;
+            sumRotate, sumSwipeUp, sumDoubleTap, sumHomeKey, sumBackKey, sumSwipeDown,
+            sumOverlay;
     private CheckBox checkBlurHome, checkBlurLock, checkKillerSystem;
-    private Switch switchKiller, switchSlide, switchRotate, switchSwipeUp, switchDoubleTap;
+    private Switch switchKiller, switchSlide, switchRotate, switchSwipeUp, switchDoubleTap,
+            switchSwipeDown;
     private View rowKiller, rowKillerSchedule, rowKillerTarget, rowKillerApps,
             rowKillerSysApps, rowHider, rowRotate, rowSwipeUp, rowDoubleTap,
-            rowHomeKey, rowBackKey;
+            rowHomeKey, rowBackKey, rowSwipeDown, rowOverlay;
 
     private interface StringSetHandler {
         void onSet(Set<String> selected);
@@ -83,11 +87,14 @@ public class SettingsActivity extends Activity {
         switchRotate = (Switch) findViewById(R.id.switchRotate);
         switchSwipeUp = (Switch) findViewById(R.id.switchSwipeUp);
         switchDoubleTap = (Switch) findViewById(R.id.switchDoubleTap);
+        switchSwipeDown = (Switch) findViewById(R.id.switchSwipeDown);
         sumRotate = (TextView) findViewById(R.id.sumRotate);
         sumSwipeUp = (TextView) findViewById(R.id.sumSwipeUp);
         sumDoubleTap = (TextView) findViewById(R.id.sumDoubleTap);
         sumHomeKey = (TextView) findViewById(R.id.sumHomeKey);
         sumBackKey = (TextView) findViewById(R.id.sumBackKey);
+        sumSwipeDown = (TextView) findViewById(R.id.sumSwipeDown);
+        sumOverlay = (TextView) findViewById(R.id.sumOverlay);
         rowKiller = findViewById(R.id.rowKiller);
         rowKillerSchedule = findViewById(R.id.rowKillerSchedule);
         rowKillerTarget = findViewById(R.id.rowKillerTarget);
@@ -99,6 +106,8 @@ public class SettingsActivity extends Activity {
         rowDoubleTap = findViewById(R.id.rowDoubleTap);
         rowHomeKey = findViewById(R.id.rowHomeKey);
         rowBackKey = findViewById(R.id.rowBackKey);
+        rowSwipeDown = findViewById(R.id.rowSwipeDown);
+        rowOverlay = findViewById(R.id.rowOverlay);
 
         wireRows();
         tintWidgets(Prefs.accent(this));
@@ -461,6 +470,55 @@ public class SettingsActivity extends Activity {
                         });
             }
         });
+
+        View.OnClickListener swipeDownToggle = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean on = !Prefs.swipeDownShade(SettingsActivity.this);
+                Prefs.setSwipeDownShade(SettingsActivity.this, on);
+                refreshSummaries();
+                // Catloft may switch its own half on, but Android owns the other half:
+                // only the user can enable an accessibility service, in Android's screen.
+                if (on && !CatloftAccessibilityService.isEnabled(SettingsActivity.this)) {
+                    openAccessibilitySettings();
+                }
+            }
+        };
+        rowSwipeDown.setOnClickListener(swipeDownToggle);
+        switchSwipeDown.setOnClickListener(swipeDownToggle);
+
+        rowOverlay.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openOverlaySettings();
+            }
+        });
+    }
+
+    /** Settings → Accessibility, where only the user can enable Catloft's service. */
+    private void openAccessibilitySettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+        } catch (Exception e) {
+            Toast.makeText(this, "Open Settings › Accessibility by hand", Toast.LENGTH_SHORT)
+                    .show();
+        }
+    }
+
+    /** Settings → "draw over other apps", the only way to grant SYSTEM_ALERT_WINDOW. */
+    private void openOverlaySettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName())));
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
+            } catch (Exception e2) {
+                Toast.makeText(this,
+                        "Open Settings › Apps › Catloft › draw over other apps",
+                        Toast.LENGTH_LONG).show();
+            }
+        }
     }
 
     /**
@@ -697,6 +755,7 @@ public class SettingsActivity extends Activity {
         Ui.tintSwitch(switchRotate, accent);
         Ui.tintSwitch(switchSwipeUp, accent);
         Ui.tintSwitch(switchDoubleTap, accent);
+        Ui.tintSwitch(switchSwipeDown, accent);
         Ui.tintCheckBox(checkBlurHome, accent);
         Ui.tintCheckBox(checkBlurLock, accent);
         // checkKillerSystem stays danger-red on purpose
@@ -796,6 +855,19 @@ public class SettingsActivity extends Activity {
 
         sumHomeKey.setText(keyLabel(Prefs.homeKeyApp(this)));
         sumBackKey.setText(keyLabel(Prefs.backKeyApp(this)));
+
+        // Live service state, not just the stored pref — the two can disagree while the
+        // user is halfway through Android's own Accessibility screen.
+        boolean shadeWanted = Prefs.swipeDownShade(this);
+        boolean shadeService = CatloftAccessibilityService.isEnabled(this);
+        switchSwipeDown.setChecked(shadeWanted);
+        sumSwipeDown.setText(!shadeWanted
+                ? "Off"
+                : (shadeService ? "On — swipe down on the home screen"
+                                : "On — waiting for Android's accessibility service"));
+
+        boolean overlay = LockOverlayWindow.canDraw(this);
+        sumOverlay.setText(overlay ? "On — covers other apps" : "Off — tap to grant");
     }
 
     /** "Default — do nothing" for the empty key spec, otherwise the mapped app's label. */

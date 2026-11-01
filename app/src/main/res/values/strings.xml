@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">Catloft</string>
+    <!-- Required as a resource: aapt only accepts a reference here (the accessibility
+         service description shown in Settings → Accessibility). -->
+    <string name="a11y_description">Lets Catloft open the notification shade with a swipe down on its home screen. Catloft reads no screen content and does nothing anywhere else.</string>
 </resources>

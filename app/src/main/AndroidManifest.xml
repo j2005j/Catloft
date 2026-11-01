@@ -4,6 +4,9 @@
     <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Draw-over-other-apps: only used by the optional system-wide lock. Asked for at
+         runtime through Settings → "draw over other apps", never silently. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:name=".CatloftApp"
@@ -64,5 +67,20 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- Optional: swipe-down-to-open-the-shade. The user turns it on by hand in
+             Settings → Accessibility; Catloft cannot enable it for them. -->
+        <service
+            android:name=".CatloftAccessibilityService"
+            android:label="Catloft swipe-down"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/catloft_accessibility_service" />
+        </service>
     </application>
 </manifest>

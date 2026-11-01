@@ -522,6 +522,57 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/rowSwipeDown"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Swipe down opens the notification shade"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                    <TextView
+                        android:id="@+id/sumSwipeDown"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/text_dim"
+                        android:textSize="13sp" />
+                </LinearLayout>
+                <!-- Live-state lamp: the row toggles Catloft's side of the gesture and hands
+                     the user to Android's own screen when the service still has to be
+                     enabled there (Catloft cannot enable it for them). -->
+                <Switch
+                    android:id="@+id/switchSwipeDown"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="Android refuses to let an app open the shade itself, so turning this on also opens Settings › Accessibility, where you switch Catloft's service on. Switch it off there or here whenever you like."
+                android:textColor="#757575"
+                android:textSize="12sp" />
+
+            <LinearLayout
                 android:id="@+id/rowDoubleTap"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -694,6 +745,48 @@
                 android:paddingEnd="16dp"
                 android:paddingBottom="8dp"
                 android:text="A Catloft-level lock only: it does not replace your PIN/pattern and cannot block hardware keys or the notification shade."
+                android:textColor="#757575"
+                android:textSize="12sp" />
+
+            <LinearLayout
+                android:id="@+id/rowOverlay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Lock over other apps too"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                    <TextView
+                        android:id="@+id/sumOverlay"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/text_dim"
+                        android:textSize="13sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="Android's own 'draw over other apps' screen must grant this one — Catloft cannot switch it on for you. Even then the system keyguard sits above it, so a PIN/pattern lock still appears first."
                 android:textColor="#757575"
                 android:textSize="12sp" />
         </LinearLayout>

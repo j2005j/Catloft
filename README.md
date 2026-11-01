@@ -25,6 +25,15 @@ framework.
   Photos. Tap to launch, long-press to reassign any app.
 - **⋮ menu** — app drawer, change wallpaper, launcher settings. **Swipe up** on
   the home screen also opens the drawer — an optional toggle, off by default.
+- **Swipe down** on the home screen opens the notification shade — optional,
+  off by default, and it needs Catloft's accessibility service switched on in
+  Android's own settings (Android will not let an app open the shade itself).
+- **Programmable Home / Back keys** — map the Home key (when Catloft is your
+  default launcher) or Back-on-home to any app. Off by default: the empty
+  mapping is today's behaviour.
+- **Double-tap to lock** — turns the screen off from the home screen. Off by
+  default; turning it on asks Android to activate Catloft as a device
+  administrator (the only policy that grants is turning the screen off).
 - **Portrait by default** — auto-rotation is a separate opt-in setting.
 - **Wallpaper control** — pick from gallery or reuse the system wallpaper;
   dimness 0–100%, blur 0–100% (pre-rendered once, applied to home and/or
@@ -35,8 +44,9 @@ framework.
   explicit red warning plus per-app selection.
 - **Color scheme** — Material palette picker with recents and an advanced
   H/S/V + hex dialog. Default `#FFCC01` (CAT yellow).
-- **Slide-to-unlock** (off by default) — launcher-level guard against
-  buttdials on the home screen. Not a security feature: keep a system PIN.
+- **Slide-to-unlock** (off by default) — a ball you drag to get past, as a guard
+  against buttdials. It covers Catloft itself, and other apps too once you grant
+  "draw over other apps". Not a security feature: keep a system PIN.
 
 ## Build
 
@@ -54,13 +64,21 @@ Requires JDK 17 and an Android SDK (compileSdk 34; `local.properties` pins
 | `KILL_BACKGROUND_PROCESSES` | the automatic app killer |
 | `SET_WALLPAPER` | "apply blur to lock screen" (Android 6 has no separate lock wallpaper) |
 | `RECEIVE_BOOT_COMPLETED` | re-arm the killer schedule after a reboot |
+| `SYSTEM_ALERT_WINDOW` | the optional "lock over other apps" — nothing is ever drawn over another app until you grant it in Android's "draw over other apps" screen |
+| *Accessibility service* — not a permission; you switch it on yourself in Settings → Accessibility | swipe down opens the notification shade (Android refuses to let an app do this any other way) |
 
 ## Honest limits
 
 - The app killer uses `killBackgroundProcesses()` — background processes only,
   never force-stop. Apps with services or alarms come back later.
-- Slide-to-unlock lives in the launcher only; it cannot block hardware keys or
-  the system keyguard.
+- Slide-to-unlock cannot block hardware keys or the notification shade, and its
+  system window sits **below** the system keyguard: with a PIN/pattern set,
+  Android's own lock screen still appears first, and only after it Catloft's
+  ball. Keep the system lock — it is the real one.
+- The Home/Back mappings are scoped by where Android hands the keys: Home only
+  reaches Catloft when Catloft is your default launcher (you'll see a brief
+  flash of home before the mapped app opens), and Back only fires while Catloft
+  is on screen — inside another app, Back belongs to that app.
 
 ## License
 

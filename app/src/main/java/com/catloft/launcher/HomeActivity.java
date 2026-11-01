@@ -58,7 +58,6 @@ public class HomeActivity extends Activity {
 
     private final Handler handler = new Handler();
     private Intent batteryIntent;
-    private boolean unlockedThisWake;
     private String[] tileSpecs = new String[3];
     private GestureDetector gesture;
     private PopupWindow currentPopup;
@@ -70,13 +69,17 @@ public class HomeActivity extends Activity {
                 return;
             }
             if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
-                unlockedThisWake = false;
+                LockOverlayWindow.setUnlockedThisWake(false);
                 lockOverlay.setVisibility(View.GONE);
                 lockOverlay.relock();
             } else if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
-                unlockedThisWake = false;
-                if (Prefs.slideUnlock(HomeActivity.this)) {
+                LockOverlayWindow.setUnlockedThisWake(false);
+                // When the system-wide lock already went up over another app it owns this
+                // wake; the in-activity overlay is only the lock while Catloft is in front.
+                if (Prefs.slideUnlock(HomeActivity.this) && !LockOverlayWindow.isShowing()) {
                     showLock();
+                } else {
+                    lockOverlay.setVisibility(View.GONE);
                 }
             }
         }
@@ -127,12 +130,12 @@ public class HomeActivity extends Activity {
             }
         });
 
-        unlockedThisWake = !Prefs.slideUnlock(this);
+        LockOverlayWindow.setUnlockedThisWake(!Prefs.slideUnlock(this));
         lockOverlay.setAccent(Prefs.accent(this));
         lockOverlay.setListener(new LockOverlayView.Listener() {
             @Override
             public void onUnlocked() {
-                unlockedThisWake = true;
+                LockOverlayWindow.setUnlockedThisWake(true);
                 lockOverlay.setVisibility(View.GONE);
             }
         });
@@ -152,9 +155,31 @@ public class HomeActivity extends Activity {
 
             @Override
             public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
-                if (e1 != null && !isLocked() && Prefs.swipeUpDrawer(HomeActivity.this)
-                        && vy < -900 && e2.getY() < e1.getY() - 80) {
-                    openDrawer();
+                if (e1 == null || isLocked()) {
+                    return false;
+                }
+                if (vy < -900 && e2.getY() < e1.getY() - 80) {
+                    if (Prefs.swipeUpDrawer(HomeActivity.this)) {
+                        openDrawer();
+                        return true;
+                    }
+                    return false;
+                }
+                if (vy > 900 && e2.getY() > e1.getY() + 80) {
+                    // Swipe down → notification shade. The direct API is signature-gated, so
+                    // this goes through Catloft's own accessibility service: the gesture only
+                    // counts when the user has switched that on (Settings → Accessibility).
+                    if (!Prefs.swipeDownShade(HomeActivity.this)) {
+                        return false;
+                    }
+                    if (!CatloftAccessibilityService.isEnabled(HomeActivity.this)) {
+                        toast("Turn on Catloft's swipe-down in Settings › Accessibility");
+                        return true;
+                    }
+                    if (!CatloftAccessibilityService.openNotifications()) {
+                        toast("Accessibility service isn't ready yet — try again");
+                        return true;
+                    }
                     return true;
                 }
                 return false;
@@ -207,9 +232,12 @@ public class HomeActivity extends Activity {
         setupTiles();
         reloadWallpaper();
         applyOrientation();
-        if (Prefs.slideUnlock(this) && !unlockedThisWake) {
+        // Catloft owns the screen again: the system-wide lock (if it was up over another
+        // app) hands the lock back, and exactly one overlay ends up visible.
+        LockOverlayWindow.release();
+        if (Prefs.slideUnlock(this) && !LockOverlayWindow.isUnlockedThisWake()) {
             showLock();
-        } else if (!Prefs.slideUnlock(this)) {
+        } else {
             lockOverlay.setVisibility(View.GONE);
         }
     }
