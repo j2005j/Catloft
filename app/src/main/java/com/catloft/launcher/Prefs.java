@@ -36,6 +36,11 @@ public final class Prefs {
     static final String LOCK_APPLIED = "lock_wallpaper_applied";
     static final String RECENT_COLORS = "recent_colors";
 
+    // Gestures & orientation — every one of these is opt-in.
+    static final String SWIPE_UP_DRAWER = "swipe_up_drawer";
+    static final String SWIPE_DOWN_SHADE = "swipe_down_shade";
+    static final String AUTO_ROTATE = "auto_rotate";
+
     static final int DEFAULT_ACCENT = 0xFFFFCC01;
     static final long DEFAULT_INTERVAL = 60L * 60L * 1000L; // 1 hour
 
@@ -198,6 +203,33 @@ public final class Prefs {
 
     static void setSlideUnlock(Context c, boolean v) {
         p(c).edit().putBoolean(SLIDE, v).apply();
+    }
+
+    /** Swipe up on the home screen opens the app drawer. Off by default. */
+    static boolean swipeUpDrawer(Context c) {
+        return p(c).getBoolean(SWIPE_UP_DRAWER, false);
+    }
+
+    static void setSwipeUpDrawer(Context c, boolean v) {
+        p(c).edit().putBoolean(SWIPE_UP_DRAWER, v).apply();
+    }
+
+    /** Swipe down on the home screen opens the notification drawer. Off by default. */
+    static boolean swipeDownShade(Context c) {
+        return p(c).getBoolean(SWIPE_DOWN_SHADE, false);
+    }
+
+    static void setSwipeDownShade(Context c, boolean v) {
+        p(c).edit().putBoolean(SWIPE_DOWN_SHADE, v).apply();
+    }
+
+    /** Screen follows the sensor. Off by default: the launcher is locked to portrait. */
+    static boolean autoRotate(Context c) {
+        return p(c).getBoolean(AUTO_ROTATE, false);
+    }
+
+    static void setAutoRotate(Context c, boolean v) {
+        p(c).edit().putBoolean(AUTO_ROTATE, v).apply();
     }
 
     static boolean lockApplied(Context c) {

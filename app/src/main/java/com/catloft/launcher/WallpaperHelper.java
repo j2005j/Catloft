@@ -1,5 +1,6 @@
 package com.catloft.launcher;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -217,6 +218,8 @@ final class WallpaperHelper {
         });
     }
 
+    /** Reading the system wallpaper needs a signature permission; failure is non-fatal here. */
+    @SuppressLint("MissingPermission")
     private static void backupSystemWallpaper(Context c) {
         try {
             Drawable d = android.app.WallpaperManager.getInstance(c).getDrawable();

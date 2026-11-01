@@ -163,6 +163,54 @@
                 android:textColor="#757575"
                 android:textSize="12sp" />
 
+            <LinearLayout
+                android:id="@+id/rowRotate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Auto-rotate screen"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                    <TextView
+                        android:id="@+id/sumRotate"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/text_dim"
+                        android:textSize="13sp" />
+                </LinearLayout>
+                <Switch
+                    android:id="@+id/switchRotate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="Off keeps Catloft in portrait regardless of how the phone is held."
+                android:textColor="#757575"
+                android:textSize="12sp" />
+
             <TextView
                 android:tag="section"
                 style="@style/SectionHeader"
@@ -200,6 +248,8 @@
                 </LinearLayout>
                 <Switch
                     android:id="@+id/switchKiller"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
                     android:layout_marginStart="8dp" />
             </LinearLayout>
@@ -431,6 +481,49 @@
             <TextView
                 android:tag="section"
                 style="@style/SectionHeader"
+                android:text="GESTURES" />
+
+            <LinearLayout
+                android:id="@+id/rowSwipeUp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackground"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="10dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="10dp">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Swipe up opens the app drawer"
+                        android:textColor="#FFFFFF"
+                        android:textSize="16sp" />
+                    <TextView
+                        android:id="@+id/sumSwipeUp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/text_dim"
+                        android:textSize="13sp" />
+                </LinearLayout>
+                <Switch
+                    android:id="@+id/switchSwipeUp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
+            <TextView
+                android:tag="section"
+                style="@style/SectionHeader"
                 android:text="SECURITY" />
 
             <LinearLayout
@@ -465,6 +558,8 @@
                 </LinearLayout>
                 <Switch
                     android:id="@+id/switchSlide"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_gravity="center_vertical"
                     android:layout_marginStart="8dp" />
             </LinearLayout>

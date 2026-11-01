@@ -23,8 +23,9 @@ framework.
   top still opens the notification drawer.
 - **3 customizable tiles** — defaults: MyFLIR, Android Settings, Google
   Photos. Tap to launch, long-press to reassign any app.
-- **⋮ menu** — app drawer, change wallpaper, launcher settings. Swipe up on
-  the home screen for the drawer too.
+- **⋮ menu** — app drawer, change wallpaper, launcher settings. **Swipe up** on
+  the home screen also opens the drawer — an optional toggle, off by default.
+- **Portrait by default** — auto-rotation is a separate opt-in setting.
 - **Wallpaper control** — pick from gallery or reuse the system wallpaper;
   dimness 0–100%, blur 0–100% (pre-rendered once, applied to home and/or
   lock screen). Default: pure black.
@@ -36,14 +37,6 @@ framework.
   H/S/V + hex dialog. Default `#FFCC01` (CAT yellow).
 - **Slide-to-unlock** (off by default) — launcher-level guard against
   buttdials on the home screen. Not a security feature: keep a system PIN.
-
-## Install
-
-```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-```
-
-Then press Home and pick Catloft.
 
 ## Build
 

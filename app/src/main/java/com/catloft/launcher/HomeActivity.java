@@ -1,13 +1,18 @@
 package com.catloft.launcher;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
@@ -24,6 +29,7 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -43,7 +49,12 @@ public class HomeActivity extends Activity {
     private TextView batteryText;
     private TextView btnMenu;
     private LinearLayout tilesRow;
+    private LinearLayout clockBlock;
     private LockOverlayView lockOverlay;
+
+    /** Smallest the big clock may shrink to before the tiles row would crowd it out. */
+    private static final float MIN_CLOCK_SP = 32f;
+    private float timeBaseSp;
 
     private final Handler handler = new Handler();
     private Intent batteryIntent;
@@ -102,7 +113,19 @@ public class HomeActivity extends Activity {
         batteryText = (TextView) findViewById(R.id.batteryText);
         btnMenu = (TextView) findViewById(R.id.btnMenu);
         tilesRow = (LinearLayout) findViewById(R.id.tilesRow);
+        clockBlock = (LinearLayout) findViewById(R.id.clockBlock);
         lockOverlay = (LockOverlayView) findViewById(R.id.lockOverlay);
+
+        // Remember the intended clock size, then shrink it whenever the middle band is too
+        // short to hold date + time + battery (landscape, or a raised system font scale).
+        timeBaseSp = timeText.getTextSize() / getResources().getDisplayMetrics().scaledDensity;
+        clockBlock.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+            @Override
+            public void onLayoutChange(View v, int l, int t, int r, int b,
+                                       int ol, int ot, int or, int ob) {
+                fitClock();
+            }
+        });
 
         unlockedThisWake = !Prefs.slideUnlock(this);
         lockOverlay.setAccent(Prefs.accent(this));
@@ -129,7 +152,8 @@ public class HomeActivity extends Activity {
 
             @Override
             public boolean onFling(MotionEvent e1, MotionEvent e2, float vx, float vy) {
-                if (e1 != null && !isLocked() && vy < -900 && e2.getY() < e1.getY() - 80) {
+                if (e1 != null && !isLocked() && Prefs.swipeUpDrawer(HomeActivity.this)
+                        && vy < -900 && e2.getY() < e1.getY() - 80) {
                     openDrawer();
                     return true;
                 }
@@ -153,6 +177,8 @@ public class HomeActivity extends Activity {
         handler.post(clockTick);
         setupTiles();
         reloadWallpaper();
+        applyOrientation();
+        offerCrashLog();
 
         if (Prefs.slideUnlock(this)) {
             showLock();
@@ -169,6 +195,7 @@ public class HomeActivity extends Activity {
         refreshAccent();
         setupTiles();
         reloadWallpaper();
+        applyOrientation();
         if (Prefs.slideUnlock(this) && !unlockedThisWake) {
             showLock();
         } else if (!Prefs.slideUnlock(this)) {
@@ -198,10 +225,8 @@ public class HomeActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (isLocked()) {
-            return; // no escaping the slide lock with Back
-        }
-        super.onBackPressed();
+        // The home screen is the root of the launcher: Back must never close it, whether or
+        // not the slide lock is showing. Sub-screens (settings, drawer) finish themselves.
     }
 
     private boolean isLocked() {
@@ -221,6 +246,84 @@ public class HomeActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(
                 android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
                         | android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+    }
+
+    /**
+     * Portrait unless the user opts into sensor rotation. This runs from both onCreate and
+     * onResume, so turning the setting on in the settings screen takes effect on the way back.
+     */
+    private void applyOrientation() {
+        setRequestedOrientation(Prefs.autoRotate(this)
+                ? ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+    }
+
+    /**
+     * Shrink the big clock when the middle band is too short to hold date + time + battery.
+     * Landscape is the usual trigger; a raised system font scale or a large icon scale can do
+     * it too, because the tiles row below is sized from the icon scale.
+     */
+    private void fitClock() {
+        if (clockBlock == null || timeBaseSp <= 0f) {
+            return;
+        }
+        int avail = clockBlock.getHeight()
+                - clockBlock.getPaddingTop() - clockBlock.getPaddingBottom();
+        if (avail <= 0) {
+            return;
+        }
+        float scaledDensity = getResources().getDisplayMetrics().scaledDensity;
+        int other = dateText.getMeasuredHeight() + batteryText.getMeasuredHeight()
+                + Ui.dp(this, 12);
+        int maxTimePx = avail - other;
+        if (maxTimePx <= 0) {
+            return;
+        }
+        // The sans-serif line box runs a little taller than the nominal point size.
+        float maxSp = maxTimePx / (1.25f * scaledDensity);
+        float sp = Math.max(MIN_CLOCK_SP, Math.min(timeBaseSp, maxSp));
+        float current = timeText.getTextSize() / scaledDensity;
+        if (Math.abs(current - sp) >= 1f) {
+            timeText.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
+        }
+    }
+
+    /**
+     * If a previous run died, show its trace once — the device has no emulator tethered to it,
+     * so the stack trace has to be readable straight off the screen.
+     */
+    private void offerCrashLog() {
+        final String trace = CrashLog.take(this);
+        if (trace == null || trace.trim().isEmpty()) {
+            return;
+        }
+        TextView body = new TextView(this);
+        body.setTypeface(Typeface.MONOSPACE);
+        body.setTextSize(11);
+        body.setTextColor(0xFFEEEEEE);
+        int pad = Ui.dp(this, 16);
+        body.setPadding(pad, pad, pad, pad);
+        body.setText(trace.length() > 6000 ? trace.substring(0, 6000) : trace);
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(body);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Catloft crashed")
+                .setView(scroll)
+                .setPositiveButton("Close", null)
+                .setNeutralButton("Copy", new android.content.DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(android.content.DialogInterface dialog, int which) {
+                        ClipboardManager cm = (ClipboardManager)
+                                getSystemService(Context.CLIPBOARD_SERVICE);
+                        if (cm != null) {
+                            cm.setPrimaryClip(ClipData.newPlainText("Catloft crash", trace));
+                            toast("Crash trace copied");
+                        }
+                    }
+                })
+                .show();
     }
 
     // --- clock / battery ---
@@ -245,7 +348,7 @@ public class HomeActivity extends Activity {
         }
         int pct = Math.round(level * 100f / scale);
         batteryText.setText(pct + "%");
-        batteryText.setTextColor(pct <= 15 ? 0xFFF44336 : 0x99FFFFFF);
+        batteryText.setTextColor(pct <= 15 ? 0xFFF44336 : 0xFFFFFFFF);
     }
 
     // --- wallpaper ---
@@ -321,6 +424,12 @@ public class HomeActivity extends Activity {
                 .show();
     }
 
+    /**
+     * Reading the system wallpaper needs READ_WALLPAPER_INTERNAL, a signature permission this
+     * app cannot hold. We try anyway — some builds don't enforce it — and the catch below
+     * reports failure to the user rather than crashing.
+     */
+    @SuppressLint("MissingPermission")
     private void useSystemWallpaper() {
         WallpaperHelper.io.execute(new Runnable() {
             @Override

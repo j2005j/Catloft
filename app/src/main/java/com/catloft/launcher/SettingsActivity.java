@@ -3,6 +3,7 @@ package com.catloft.launcher;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -33,11 +34,12 @@ public class SettingsActivity extends Activity {
     };
 
     private TextView sumIconScale, sumDim, sumBlur, sumKiller, sumSchedule,
-            sumTarget, sumApps, sumSysApps, sumHider, sumTiles, sumColor, sumSlide;
+            sumTarget, sumApps, sumSysApps, sumHider, sumTiles, sumColor, sumSlide,
+            sumRotate, sumSwipeUp;
     private CheckBox checkBlurHome, checkBlurLock, checkKillerSystem;
-    private Switch switchKiller, switchSlide;
+    private Switch switchKiller, switchSlide, switchRotate, switchSwipeUp;
     private View rowKiller, rowKillerSchedule, rowKillerTarget, rowKillerApps,
-            rowKillerSysApps, rowHider;
+            rowKillerSysApps, rowHider, rowRotate, rowSwipeUp;
 
     private interface StringSetHandler {
         void onSet(Set<String> selected);
@@ -72,16 +74,23 @@ public class SettingsActivity extends Activity {
         checkKillerSystem = (CheckBox) findViewById(R.id.checkKillerSystem);
         switchKiller = (Switch) findViewById(R.id.switchKiller);
         switchSlide = (Switch) findViewById(R.id.switchSlide);
+        switchRotate = (Switch) findViewById(R.id.switchRotate);
+        switchSwipeUp = (Switch) findViewById(R.id.switchSwipeUp);
+        sumRotate = (TextView) findViewById(R.id.sumRotate);
+        sumSwipeUp = (TextView) findViewById(R.id.sumSwipeUp);
         rowKiller = findViewById(R.id.rowKiller);
         rowKillerSchedule = findViewById(R.id.rowKillerSchedule);
         rowKillerTarget = findViewById(R.id.rowKillerTarget);
         rowKillerApps = findViewById(R.id.rowKillerApps);
         rowKillerSysApps = findViewById(R.id.rowKillerSysApps);
         rowHider = findViewById(R.id.rowHider);
+        rowRotate = findViewById(R.id.rowRotate);
+        rowSwipeUp = findViewById(R.id.rowSwipeUp);
 
         wireRows();
         tintWidgets(Prefs.accent(this));
         refreshSummaries();
+        applyOrientation();
     }
 
     @Override
@@ -89,6 +98,14 @@ public class SettingsActivity extends Activity {
         super.onResume();
         tintWidgets(Prefs.accent(this));
         refreshSummaries();
+        applyOrientation();
+    }
+
+    /** Portrait unless the user opts into sensor rotation; applied here and on Home. */
+    private void applyOrientation() {
+        setRequestedOrientation(Prefs.autoRotate(this)
+                ? ActivityInfo.SCREEN_ORIENTATION_SENSOR
+                : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
     }
 
     // --- wiring ---
@@ -347,6 +364,29 @@ public class SettingsActivity extends Activity {
         };
         findViewById(R.id.rowSlide).setOnClickListener(slideToggle);
         switchSlide.setOnClickListener(slideToggle);
+
+        View.OnClickListener rotateToggle = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean on = !Prefs.autoRotate(SettingsActivity.this);
+                Prefs.setAutoRotate(SettingsActivity.this, on);
+                applyOrientation();
+                refreshSummaries();
+            }
+        };
+        rowRotate.setOnClickListener(rotateToggle);
+        switchRotate.setOnClickListener(rotateToggle);
+
+        View.OnClickListener swipeUpToggle = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean on = !Prefs.swipeUpDrawer(SettingsActivity.this);
+                Prefs.setSwipeUpDrawer(SettingsActivity.this, on);
+                refreshSummaries();
+            }
+        };
+        rowSwipeUp.setOnClickListener(swipeUpToggle);
+        switchSwipeUp.setOnClickListener(swipeUpToggle);
     }
 
     private void pickTileApp(final int index) {
@@ -550,20 +590,30 @@ public class SettingsActivity extends Activity {
     private void tintWidgets(int accent) {
         Ui.tintSwitch(switchKiller, accent);
         Ui.tintSwitch(switchSlide, accent);
+        Ui.tintSwitch(switchRotate, accent);
+        Ui.tintSwitch(switchSwipeUp, accent);
         Ui.tintCheckBox(checkBlurHome, accent);
         Ui.tintCheckBox(checkBlurLock, accent);
         // checkKillerSystem stays danger-red on purpose
 
-        ViewGroup root = (ViewGroup) findViewById(R.id.btnBack).getParent().getParent();
-        ViewGroup list = (ViewGroup) root.getChildAt(1); // ScrollView
-        if (list != null && list.getChildCount() > 0) {
-            ViewGroup inner = (ViewGroup) list.getChildAt(0);
-            for (int i = 0; i < inner.getChildCount(); i++) {
-                View child = inner.getChildAt(i);
-                if ("section".equals(child.getTag()) && child instanceof TextView) {
-                    ((TextView) child).setTextColor(accent);
-                }
+        tintSections(findViewById(android.R.id.content), accent);
+    }
+
+    /**
+     * Walk the entire view tree for section headers instead of reaching through
+     * {@code btnBack → parent → parent → child 1 → child 0} and hoping the layout still has
+     * that shape. The old form survived every layout edit so far, but a silent index
+     * assumption is exactly the kind of coupling that turns a cosmetic change into a crash.
+     */
+    private void tintSections(View v, int accent) {
+        if (v instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) v;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                tintSections(group.getChildAt(i), accent);
             }
+        }
+        if (v instanceof TextView && "section".equals(v.getTag())) {
+            ((TextView) v).setTextColor(accent);
         }
     }
 
@@ -620,6 +670,14 @@ public class SettingsActivity extends Activity {
         boolean slide = Prefs.slideUnlock(this);
         switchSlide.setChecked(slide);
         sumSlide.setText(slide ? "On — appears when the screen wakes" : "Off");
+
+        boolean rotate = Prefs.autoRotate(this);
+        switchRotate.setChecked(rotate);
+        sumRotate.setText(rotate ? "On — follows the sensor" : "Off — locked to portrait");
+
+        boolean swipeUp = Prefs.swipeUpDrawer(this);
+        switchSwipeUp.setChecked(swipeUp);
+        sumSwipeUp.setText(swipeUp ? "On" : "Off");
     }
 
     private static String intervalLabel(long ms) {
