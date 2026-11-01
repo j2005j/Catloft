@@ -40,6 +40,11 @@ public final class Prefs {
     static final String SWIPE_UP_DRAWER = "swipe_up_drawer";
     static final String SWIPE_DOWN_SHADE = "swipe_down_shade";
     static final String AUTO_ROTATE = "auto_rotate";
+    static final String DOUBLE_TAP_LOCK = "double_tap_lock";
+
+    // Programmable hardware keys: tile spec of the app to launch, "" = leave alone.
+    static final String HOME_KEY_APP = "home_key_app";
+    static final String BACK_KEY_APP = "back_key_app";
 
     static final int DEFAULT_ACCENT = 0xFFFFCC01;
     static final long DEFAULT_INTERVAL = 60L * 60L * 1000L; // 1 hour
@@ -230,6 +235,33 @@ public final class Prefs {
 
     static void setAutoRotate(Context c, boolean v) {
         p(c).edit().putBoolean(AUTO_ROTATE, v).apply();
+    }
+
+    /** Double-tap on the home screen turns the screen off. Off by default. */
+    static boolean doubleTapLock(Context c) {
+        return p(c).getBoolean(DOUBLE_TAP_LOCK, false);
+    }
+
+    static void setDoubleTapLock(Context c, boolean v) {
+        p(c).edit().putBoolean(DOUBLE_TAP_LOCK, v).apply();
+    }
+
+    /** App launched when the Home key reaches Catloft. "" = do nothing (the default). */
+    static String homeKeyApp(Context c) {
+        return p(c).getString(HOME_KEY_APP, "");
+    }
+
+    static void setHomeKeyApp(Context c, String spec) {
+        p(c).edit().putString(HOME_KEY_APP, spec == null ? "" : spec).apply();
+    }
+
+    /** App launched when Back is pressed on the home screen. "" = do nothing (default). */
+    static String backKeyApp(Context c) {
+        return p(c).getString(BACK_KEY_APP, "");
+    }
+
+    static void setBackKeyApp(Context c, String spec) {
+        p(c).edit().putString(BACK_KEY_APP, spec == null ? "" : spec).apply();
     }
 
     static boolean lockApplied(Context c) {

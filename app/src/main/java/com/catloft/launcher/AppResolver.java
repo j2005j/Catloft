@@ -107,6 +107,21 @@ final class AppResolver {
         return out;
     }
 
+    /**
+     * Non-system apps only — what the killer's "Selected apps" list offers. System packages
+     * belong to the red-warning picker alone, so a stale system entry can't sit in the normal
+     * set (the picker rebuilds it from this visible list on the next OK).
+     */
+    static List<AppEntry> nonSystemApps(Context c) {
+        List<AppEntry> out = new ArrayList<>();
+        for (AppEntry e : allApps(c)) {
+            if (!e.system) {
+                out.add(e);
+            }
+        }
+        return out;
+    }
+
     // --- tile spec resolution ---
 
     /** Returns the component a tile spec points at, or null when it can't be resolved. */
@@ -142,13 +157,26 @@ final class AppResolver {
 
     /** Launches a tile spec; false when nothing resolves. */
     static boolean launch(Context c, String spec) {
+        return start(c, spec, Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+    }
+
+    /**
+     * Launches a programmable Home/Back key target. FLAG_ACTIVITY_NEW_TASK *only* — no
+     * CLEAR_TOP, so an app that is already open keeps its state instead of being rebuilt
+     * on the way in.
+     */
+    static boolean launchKey(Context c, String spec) {
+        return start(c, spec, Intent.FLAG_ACTIVITY_NEW_TASK);
+    }
+
+    private static boolean start(Context c, String spec, int flags) {
         ComponentName cn = resolve(c, spec);
         if (cn == null) {
             return false;
         }
         Intent i = new Intent(Intent.ACTION_MAIN);
         i.setComponent(cn);
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        i.addFlags(flags);
         try {
             c.startActivity(i);
             return true;

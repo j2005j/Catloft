@@ -10,10 +10,11 @@ import android.graphics.RectF;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.animation.DecelerateInterpolator;
 
 /**
- * "Slide to unlock >" — a Catloft-level guard against buttdials on the home
+ * "Slide to unlock" — a Catloft-level guard against buttdials on the home
  * screen. Deliberately NOT a security feature: it cannot block hardware keys,
  * the notification shade or replace the system keyguard.
  */
@@ -36,6 +37,8 @@ public class LockOverlayView extends View {
     private float thumbEnd;
     private float thumbR;
     private boolean dragging;
+    /** Extra reach around the thumb so a slightly-off tap still starts a drag. */
+    private final int touchSlop;
     private int accent = Prefs.DEFAULT_ACCENT;
     private Listener listener;
 
@@ -45,6 +48,7 @@ public class LockOverlayView extends View {
 
     public LockOverlayView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         bgPaint.setColor(0xE6000000);
         trackPaint.setColor(0x2EFFFFFF);
         thumbPaint.setColor(accent);
@@ -87,7 +91,7 @@ public class LockOverlayView extends View {
 
         float cy = track.centerY();
         textPaint.setTextSize(track.height() * 0.38f);
-        canvas.drawText("Slide to unlock >", track.centerX(), cy + textPaint.getTextSize() * 0.35f, textPaint);
+        canvas.drawText("Slide to unlock", track.centerX(), cy + textPaint.getTextSize() * 0.35f, textPaint);
 
         canvas.drawCircle(thumbX, cy, thumbR, thumbPaint);
 
@@ -106,10 +110,21 @@ public class LockOverlayView extends View {
             return false;
         }
         switch (event.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                dragging = true;
-                setThumbTo(event.getX());
+            case MotionEvent.ACTION_DOWN: {
+                // Only the ball itself starts a drag. Before this, a tap anywhere in the
+                // view called setThumbTo(), which clamps — so a tap at the far end threw
+                // the thumb to thumbEnd and ACTION_UP then unlocked. Anything that is not
+                // the ball is swallowed (never returned as false: that would leak the touch
+                // to the home gesture layer sitting under the lock).
+                float dx = event.getX() - thumbX;
+                float dy = event.getY() - track.centerY();
+                float reach = thumbR + touchSlop;
+                dragging = dx * dx + dy * dy <= reach * reach;
+                if (dragging) {
+                    setThumbTo(event.getX());
+                }
                 return true;
+            }
             case MotionEvent.ACTION_MOVE:
                 if (dragging) {
                     setThumbTo(event.getX());

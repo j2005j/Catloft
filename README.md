@@ -59,8 +59,6 @@ Requires JDK 17 and an Android SDK (compileSdk 34; `local.properties` pins
 
 - The app killer uses `killBackgroundProcesses()` — background processes only,
   never force-stop. Apps with services or alarms come back later.
-- Cache cleanup for other apps is impossible without root/device-owner, so
-  that feature deliberately does not exist.
 - Slide-to-unlock lives in the launcher only; it cannot block hardware keys or
   the system keyguard.
 

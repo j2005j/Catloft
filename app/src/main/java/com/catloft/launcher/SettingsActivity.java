@@ -3,6 +3,7 @@ package com.catloft.launcher;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.view.View;
@@ -35,14 +36,19 @@ public class SettingsActivity extends Activity {
 
     private TextView sumIconScale, sumDim, sumBlur, sumKiller, sumSchedule,
             sumTarget, sumApps, sumSysApps, sumHider, sumTiles, sumColor, sumSlide,
-            sumRotate, sumSwipeUp;
+            sumRotate, sumSwipeUp, sumDoubleTap, sumHomeKey, sumBackKey;
     private CheckBox checkBlurHome, checkBlurLock, checkKillerSystem;
-    private Switch switchKiller, switchSlide, switchRotate, switchSwipeUp;
+    private Switch switchKiller, switchSlide, switchRotate, switchSwipeUp, switchDoubleTap;
     private View rowKiller, rowKillerSchedule, rowKillerTarget, rowKillerApps,
-            rowKillerSysApps, rowHider, rowRotate, rowSwipeUp;
+            rowKillerSysApps, rowHider, rowRotate, rowSwipeUp, rowDoubleTap,
+            rowHomeKey, rowBackKey;
 
     private interface StringSetHandler {
         void onSet(Set<String> selected);
+    }
+
+    private interface KeyPickHandler {
+        void onPicked(String spec); // "" = default / do nothing
     }
 
     @Override
@@ -76,8 +82,12 @@ public class SettingsActivity extends Activity {
         switchSlide = (Switch) findViewById(R.id.switchSlide);
         switchRotate = (Switch) findViewById(R.id.switchRotate);
         switchSwipeUp = (Switch) findViewById(R.id.switchSwipeUp);
+        switchDoubleTap = (Switch) findViewById(R.id.switchDoubleTap);
         sumRotate = (TextView) findViewById(R.id.sumRotate);
         sumSwipeUp = (TextView) findViewById(R.id.sumSwipeUp);
+        sumDoubleTap = (TextView) findViewById(R.id.sumDoubleTap);
+        sumHomeKey = (TextView) findViewById(R.id.sumHomeKey);
+        sumBackKey = (TextView) findViewById(R.id.sumBackKey);
         rowKiller = findViewById(R.id.rowKiller);
         rowKillerSchedule = findViewById(R.id.rowKillerSchedule);
         rowKillerTarget = findViewById(R.id.rowKillerTarget);
@@ -86,6 +96,9 @@ public class SettingsActivity extends Activity {
         rowHider = findViewById(R.id.rowHider);
         rowRotate = findViewById(R.id.rowRotate);
         rowSwipeUp = findViewById(R.id.rowSwipeUp);
+        rowDoubleTap = findViewById(R.id.rowDoubleTap);
+        rowHomeKey = findViewById(R.id.rowHomeKey);
+        rowBackKey = findViewById(R.id.rowBackKey);
 
         wireRows();
         tintWidgets(Prefs.accent(this));
@@ -99,6 +112,20 @@ public class SettingsActivity extends Activity {
         tintWidgets(Prefs.accent(this));
         refreshSummaries();
         applyOrientation();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != CatloftDeviceAdmin.REQUEST_ENABLE) {
+            return;
+        }
+        if (resultCode == RESULT_OK) {
+            Prefs.setDoubleTapLock(this, true);
+        } else {
+            Toast.makeText(this, "Double-tap to lock stays off", Toast.LENGTH_SHORT).show();
+        }
+        refreshSummaries();
     }
 
     /** Portrait unless the user opts into sensor rotation; applied here and on Home. */
@@ -251,7 +278,7 @@ public class SettingsActivity extends Activity {
         rowKillerApps.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                pickApps("Selected apps", AppResolver.allApps(SettingsActivity.this),
+                pickApps("Selected apps", AppResolver.nonSystemApps(SettingsActivity.this),
                         Prefs.killerApps(SettingsActivity.this), false,
                         new StringSetHandler() {
                             @Override
@@ -387,6 +414,83 @@ public class SettingsActivity extends Activity {
         };
         rowSwipeUp.setOnClickListener(swipeUpToggle);
         switchSwipeUp.setOnClickListener(swipeUpToggle);
+
+        View.OnClickListener doubleTapToggle = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (Prefs.doubleTapLock(SettingsActivity.this)) {
+                    Prefs.setDoubleTapLock(SettingsActivity.this, false);
+                    refreshSummaries();
+                } else if (CatloftDeviceAdmin.isActive(SettingsActivity.this)) {
+                    Prefs.setDoubleTapLock(SettingsActivity.this, true);
+                    refreshSummaries();
+                } else {
+                    // Ask Android; the preference is stored from onActivityResult only if
+                    // the user actually grants the admin — never from here.
+                    CatloftDeviceAdmin.request(SettingsActivity.this);
+                }
+            }
+        };
+        rowDoubleTap.setOnClickListener(doubleTapToggle);
+        switchDoubleTap.setOnClickListener(doubleTapToggle);
+
+        rowHomeKey.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pickKeyApp("Home key opens", Prefs.homeKeyApp(SettingsActivity.this),
+                        new KeyPickHandler() {
+                            @Override
+                            public void onPicked(String spec) {
+                                Prefs.setHomeKeyApp(SettingsActivity.this, spec);
+                                refreshSummaries();
+                            }
+                        });
+            }
+        });
+
+        rowBackKey.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pickKeyApp("Back key opens", Prefs.backKeyApp(SettingsActivity.this),
+                        new KeyPickHandler() {
+                            @Override
+                            public void onPicked(String spec) {
+                                Prefs.setBackKeyApp(SettingsActivity.this, spec);
+                                refreshSummaries();
+                            }
+                        });
+            }
+        });
+    }
+
+    /**
+     * Single-choice picker for a Home/Back mapping: entry 0 is always
+     * "Default — do nothing" (the empty spec), then every launchable app.
+     */
+    private void pickKeyApp(String title, final String current, final KeyPickHandler handler) {
+        final List<AppResolver.AppEntry> apps = AppResolver.launchableApps(this);
+        final String[] labels = new String[apps.size() + 1];
+        labels[0] = "Default — do nothing";
+        int checked = 0;
+        for (int i = 0; i < apps.size(); i++) {
+            labels[i + 1] = apps.get(i).label + (apps.get(i).system ? "  (system)" : "");
+            if (("component:" + apps.get(i).component.flattenToString()).equals(current)) {
+                checked = i + 1;
+            }
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setSingleChoiceItems(labels, checked, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        handler.onPicked(which == 0
+                                ? ""
+                                : "component:" + apps.get(which - 1).component.flattenToString());
+                        dialog.dismiss();
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void pickTileApp(final int index) {
@@ -592,6 +696,7 @@ public class SettingsActivity extends Activity {
         Ui.tintSwitch(switchSlide, accent);
         Ui.tintSwitch(switchRotate, accent);
         Ui.tintSwitch(switchSwipeUp, accent);
+        Ui.tintSwitch(switchDoubleTap, accent);
         Ui.tintCheckBox(checkBlurHome, accent);
         Ui.tintCheckBox(checkBlurLock, accent);
         // checkKillerSystem stays danger-red on purpose
@@ -678,6 +783,27 @@ public class SettingsActivity extends Activity {
         boolean swipeUp = Prefs.swipeUpDrawer(this);
         switchSwipeUp.setChecked(swipeUp);
         sumSwipeUp.setText(swipeUp ? "On" : "Off");
+
+        // The preference can outlive its grant: Android lets the user revoke device admin
+        // behind our back, so show what would actually happen rather than what is stored.
+        boolean doubleTap = Prefs.doubleTapLock(this);
+        boolean admin = CatloftDeviceAdmin.isActive(this);
+        switchDoubleTap.setChecked(doubleTap && admin);
+        sumDoubleTap.setText(!doubleTap
+                ? "Off"
+                : (admin ? "On — double-tap the empty home screen"
+                         : "Off — Android revoked device admin"));
+
+        sumHomeKey.setText(keyLabel(Prefs.homeKeyApp(this)));
+        sumBackKey.setText(keyLabel(Prefs.backKeyApp(this)));
+    }
+
+    /** "Default — do nothing" for the empty key spec, otherwise the mapped app's label. */
+    private String keyLabel(String spec) {
+        if (spec == null || spec.length() == 0) {
+            return "Default — do nothing";
+        }
+        return AppResolver.label(this, spec);
     }
 
     private static String intervalLabel(long ms) {

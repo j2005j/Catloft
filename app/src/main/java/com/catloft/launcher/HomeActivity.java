@@ -159,6 +159,17 @@ public class HomeActivity extends Activity {
                 }
                 return false;
             }
+
+            @Override
+            public boolean onDoubleTap(MotionEvent e) {
+                // Children (tiles, menu, clock) consume their own taps, so this only ever
+                // sees a double-tap on empty space or on the clock text itself.
+                if (Prefs.doubleTapLock(HomeActivity.this) && !isLocked()) {
+                    lockNow();
+                    return true;
+                }
+                return false;
+            }
         });
         findViewById(R.id.homeRoot).setOnTouchListener(new View.OnTouchListener() {
             @Override
@@ -227,6 +238,48 @@ public class HomeActivity extends Activity {
     public void onBackPressed() {
         // The home screen is the root of the launcher: Back must never close it, whether or
         // not the slide lock is showing. Sub-screens (settings, drawer) finish themselves.
+        // When a Back app is mapped it launches instead — but never while locked, so the
+        // slide lock can't be walked past by pressing the key.
+        String backKeyApp = Prefs.backKeyApp(this);
+        if (backKeyApp != null && backKeyApp.length() > 0 && !isLocked()) {
+            if (!AppResolver.launchKey(this, backKeyApp)) {
+                toast("That Back app is no longer installed");
+            }
+        }
+    }
+
+    /**
+     * Catloft is {@code launchMode="singleTask"}, so the system Home key arrives here instead
+     * of creating a second instance. With a Home app mapped, that is where it launches.
+     */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        String homeKeyApp = Prefs.homeKeyApp(this);
+        if (homeKeyApp != null && homeKeyApp.length() > 0) {
+            if (!AppResolver.launchKey(this, homeKeyApp)) {
+                toast("That Home app is no longer installed");
+            }
+        }
+    }
+
+    /** Double-tap-to-lock: force the screen off, or repair the grant if it was revoked. */
+    private void lockNow() {
+        if (!CatloftDeviceAdmin.isActive(this)) {
+            // Revoked behind our back: drop the preference and ask again instead of
+            // failing silently every time the user double-taps.
+            Prefs.setDoubleTapLock(this, false);
+            toast("Android revoked Catloft's device admin — re-enable to lock");
+            CatloftDeviceAdmin.request(this);
+            return;
+        }
+        android.app.admin.DevicePolicyManager dpm =
+                (android.app.admin.DevicePolicyManager)
+                        getSystemService(Context.DEVICE_POLICY_SERVICE);
+        if (dpm != null) {
+            dpm.lockNow();
+        }
     }
 
     private boolean isLocked() {
@@ -462,6 +515,12 @@ public class HomeActivity extends Activity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == CatloftDeviceAdmin.REQUEST_ENABLE) {
+            if (resultCode == RESULT_OK) {
+                Prefs.setDoubleTapLock(this, true);
+            }
+            return;
+        }
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != REQ_PICK_WALLPAPER || resultCode != RESULT_OK || data == null
                 || data.getData() == null) {
