@@ -6,3 +6,8 @@ local.properties
 .DS_Store
 /captures
 .externalNativeBuild
+
+# Release signing lives on the maintainer's machine only: the keystore and the
+# properties file that unlocks it are never committed (HANDOFF.md holds the password).
+catloft-release.jks
+keystore.properties

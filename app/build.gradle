@@ -14,15 +14,44 @@ android {
         versionName "1.0"
     }
 
+    // Release signing — only when keystore.properties (and catloft-release.jks) exist; both
+    // are gitignored, so a fresh clone still builds and simply gets an unsigned release APK.
+    def releaseKeystoreProps = rootProject.file('keystore.properties')
+    def releaseProps = new Properties()
+    if (releaseKeystoreProps.exists()) {
+        releaseKeystoreProps.withInputStream { releaseProps.load(it) }
+    }
+
+    signingConfigs {
+        release {
+            if (releaseKeystoreProps.exists()) {
+                storeFile rootProject.file(releaseProps['storeFile'])
+                storePassword releaseProps['storePassword']
+                keyAlias releaseProps['keyAlias']
+                keyPassword releaseProps['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
+            if (releaseKeystoreProps.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lint {
+        // targetSdk 23 is deliberate — the device runs Marshmallow — so lint's vital check
+        // would fail every release build on the one accepted error (ExpiredTargetSdkVersion).
+        // lintDebug still reports it; that stays the normal gate.
+        checkReleaseBuilds false
     }
 }
 
