@@ -17,13 +17,14 @@ no clutter. Built in pure Java with **zero dependencies** — just the Android
 framework.
 
 <p align="center">
-  <img src="art/screenshot-home.png" width="360" alt="Catloft home screen: date, time, battery and three tiles">
+  <img src="art/screenshot-home.jpg" width="360" alt="Catloft home screen: date, time, battery and three tiles">
 </p>
 
 ## Features
 
-- **Big clock** — date, time (12/24h follows system) and battery percentage;
-  turns red at ≤ 15%.
+- **Big clock** — date, time (12/24h follows system) and battery percentage with a
+  status-bar-style indicator beside it: plain battery, a bolt while charging, the
+  alert glyph at ≤ 15% (the same threshold that reddens the text).
 - **Hidden status bar** — non-immersive fullscreen, so a swipe down from the
   top still opens the notification drawer.
 - **3 customizable tiles** — defaults: MyFLIR (on devices that ship it), Android
@@ -97,7 +98,8 @@ phones it is built for — the one it is tested on runs 6.0.1.
 
 **Material Design icons** by Google, used under the
 [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) — `more_vert`,
-`arrow_back`, `apps`, `wallpaper` and `settings`, path data taken verbatim from
+`arrow_back`, `apps`, `wallpaper`, `settings`, `battery_full`,
+`battery_charging_full` and `battery_alert`, path data taken verbatim from
 [material-design-icons](https://github.com/google/material-design-icons).
 
 ## License

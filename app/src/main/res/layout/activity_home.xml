@@ -59,14 +59,34 @@
                 android:textColor="#FFCC01"
                 android:textSize="80sp" />
 
-            <TextView
-                android:id="@+id/batteryText"
+            <!-- Battery row: the percentage plus a status-bar-style indicator at the same
+                 scale as the text (15dp next to 15sp). The icon follows the text colour —
+                 white normally, red at ≤ 15%. -->
+            <LinearLayout
+                android:id="@+id/batteryRow"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:singleLine="true"
-                android:textColor="#FFFFFF"
-                android:textSize="15sp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/batteryText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:singleLine="true"
+                    android:textColor="#FFFFFF"
+                    android:textSize="15sp" />
+
+                <ImageView
+                    android:id="@+id/batteryIcon"
+                    android:layout_width="15dp"
+                    android:layout_height="15dp"
+                    android:layout_marginStart="5dp"
+                    android:contentDescription="@null"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_battery_full" />
+            </LinearLayout>
         </LinearLayout>
 
         <LinearLayout

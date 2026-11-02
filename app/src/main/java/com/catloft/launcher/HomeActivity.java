@@ -48,6 +48,8 @@ public class HomeActivity extends Activity {
     private TextView dateText;
     private TextView timeText;
     private TextView batteryText;
+    private LinearLayout batteryRow;
+    private ImageView batteryIcon;
     private View btnMenu;
     private LinearLayout tilesRow;
     private LinearLayout clockBlock;
@@ -124,6 +126,8 @@ public class HomeActivity extends Activity {
         dateText = (TextView) findViewById(R.id.dateText);
         timeText = (TextView) findViewById(R.id.timeText);
         batteryText = (TextView) findViewById(R.id.batteryText);
+        batteryRow = (LinearLayout) findViewById(R.id.batteryRow);
+        batteryIcon = (ImageView) findViewById(R.id.batteryIcon);
         btnMenu = findViewById(R.id.btnMenu);
         tilesRow = (LinearLayout) findViewById(R.id.tilesRow);
         clockBlock = (LinearLayout) findViewById(R.id.clockBlock);
@@ -469,7 +473,7 @@ public class HomeActivity extends Activity {
             return;
         }
         float scaledDensity = getResources().getDisplayMetrics().scaledDensity;
-        int other = dateText.getMeasuredHeight() + batteryText.getMeasuredHeight()
+        int other = dateText.getMeasuredHeight() + batteryRow.getMeasuredHeight()
                 + Ui.dp(this, 12);
         int maxTimePx = avail - other;
         if (maxTimePx <= 0) {
@@ -543,8 +547,29 @@ public class HomeActivity extends Activity {
             return;
         }
         int pct = Math.round(level * 100f / scale);
+        int color = pct <= 15 ? 0xFFF44336 : 0xFFFFFFFF;
         batteryText.setText(pct + "%");
-        batteryText.setTextColor(pct <= 15 ? 0xFFF44336 : 0xFFFFFFFF);
+        batteryText.setTextColor(color);
+        updateBatteryIcon(pct, color);
+    }
+
+    /**
+     * The indicator beside the percentage, styled like the status bar's: a bolt while plugged
+     * in, the alert glyph at ≤ 15% (the same threshold that reddens the text), plain battery
+     * otherwise — always the same colour as the text it sits next to.
+     */
+    private void updateBatteryIcon(int pct, int color) {
+        int status = batteryIntent == null ? -1
+                : batteryIntent.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1);
+        int res = R.drawable.ic_battery_full;
+        if (status == android.os.BatteryManager.BATTERY_STATUS_CHARGING
+                || status == android.os.BatteryManager.BATTERY_STATUS_FULL) {
+            res = R.drawable.ic_battery_charging_full;
+        } else if (pct <= 15) {
+            res = R.drawable.ic_battery_alert;
+        }
+        batteryIcon.setImageResource(res);
+        Ui.tintImageView(batteryIcon, color);
     }
 
     // --- wallpaper ---
