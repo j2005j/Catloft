@@ -87,6 +87,13 @@ Requires JDK 17 and an Android SDK (compileSdk 34; `local.properties` pins
   rebind it after the app is replaced, and the swipe-down gesture needs a live
   connection.
 
+## Credits
+
+**Material Design icons** by Google, used under the
+[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0) — `more_vert`,
+`arrow_back`, `apps`, `wallpaper` and `settings`, path data taken verbatim from
+[material-design-icons](https://github.com/google/material-design-icons).
+
 ## License
 
 Personal project — no license granted.

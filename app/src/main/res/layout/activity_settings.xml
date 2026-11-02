@@ -9,7 +9,7 @@
         android:layout_width="match_parent"
         android:layout_height="56dp">
 
-        <TextView
+        <ImageView
             android:id="@+id/btnBack"
             android:layout_width="48dp"
             android:layout_height="48dp"
@@ -17,10 +17,8 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:clickable="true"
             android:contentDescription="Back"
-            android:gravity="center"
-            android:text="←"
-            android:textColor="#FFFFFF"
-            android:textSize="22sp" />
+            android:scaleType="center"
+            android:src="@drawable/ic_arrow_back" />
 
         <TextView
             android:layout_width="wrap_content"

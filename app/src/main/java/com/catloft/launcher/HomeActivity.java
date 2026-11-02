@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -47,7 +48,7 @@ public class HomeActivity extends Activity {
     private TextView dateText;
     private TextView timeText;
     private TextView batteryText;
-    private TextView btnMenu;
+    private View btnMenu;
     private LinearLayout tilesRow;
     private LinearLayout clockBlock;
     private LockOverlayView lockOverlay;
@@ -123,7 +124,7 @@ public class HomeActivity extends Activity {
         dateText = (TextView) findViewById(R.id.dateText);
         timeText = (TextView) findViewById(R.id.timeText);
         batteryText = (TextView) findViewById(R.id.batteryText);
-        btnMenu = (TextView) findViewById(R.id.btnMenu);
+        btnMenu = findViewById(R.id.btnMenu);
         tilesRow = (LinearLayout) findViewById(R.id.tilesRow);
         clockBlock = (LinearLayout) findViewById(R.id.clockBlock);
         lockOverlay = (LockOverlayView) findViewById(R.id.lockOverlay);
@@ -131,6 +132,7 @@ public class HomeActivity extends Activity {
         // Remember the intended clock size, then shrink it whenever the middle band is too
         // short to hold date + time + battery (landscape, or a raised system font scale).
         timeBaseSp = timeText.getTextSize() / getResources().getDisplayMetrics().scaledDensity;
+        applyClockRoom();
         clockBlock.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
             @Override
             public void onLayoutChange(View v, int l, int t, int r, int b,
@@ -409,6 +411,42 @@ public class HomeActivity extends Activity {
         setRequestedOrientation(Prefs.autoRotate(this)
                 ? ActivityInfo.SCREEN_ORIENTATION_SENSOR
                 : ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // The manifest handles orientation itself, so this is where rotation lands.
+        applyClockRoom();
+        applyOrientation();
+        updateClock();
+    }
+
+    /**
+     * The ⋮ button sits in its own fixed 56dp row, which is pure spacer as far as the clock
+     * is concerned — 112px of a 720px-tall landscape screen, which is where the battery was
+     * ending up underneath the tiles. In landscape the clock block is pulled up into that row
+     * with a negative top margin: because the block is the weighted child, it simply grows
+     * upward, so the button keeps its row, the tiles do not move, and the clock gets those
+     * 112px back. Portrait keeps the exact layout it had.
+     */
+    private void applyClockRoom() {
+        if (clockBlock == null) {
+            return;
+        }
+        boolean landscape = getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        int want = landscape ? -Ui.dp(this, 56) : 0;
+        ViewGroup.LayoutParams raw = clockBlock.getLayoutParams();
+        if (!(raw instanceof LinearLayout.LayoutParams)) {
+            return;
+        }
+        LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) raw;
+        if (lp.topMargin == want) {
+            return;
+        }
+        lp.topMargin = want;
+        clockBlock.setLayoutParams(lp);
     }
 
     /**
@@ -744,21 +782,21 @@ public class HomeActivity extends Activity {
         int pad = Ui.dp(this, 4);
         panel.setPadding(pad, pad, pad, pad);
 
-        addMenuRow(panel, android.R.drawable.ic_menu_agenda, "App drawer", accent,
+        addMenuRow(panel, R.drawable.ic_apps, "App drawer", accent,
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         openDrawer();
                     }
                 });
-        addMenuRow(panel, android.R.drawable.ic_menu_gallery, "Change wallpaper", accent,
+        addMenuRow(panel, R.drawable.ic_wallpaper, "Change wallpaper", accent,
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         wallpaperDialog();
                     }
                 });
-        addMenuRow(panel, android.R.drawable.ic_menu_manage, "Launcher settings", accent,
+        addMenuRow(panel, R.drawable.ic_settings, "Launcher settings", accent,
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {

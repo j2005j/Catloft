@@ -30,7 +30,9 @@
             android:layout_width="match_parent"
             android:layout_height="56dp">
 
-            <TextView
+            <!-- Material "more_vert" instead of the "⋮" glyph: an ImageView so the 24dp
+                 icon sits at its own size inside the 48dp touch target. -->
+            <ImageView
                 android:id="@+id/btnMenu"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
@@ -40,10 +42,8 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:clickable="true"
                 android:contentDescription="Menu"
-                android:gravity="center"
-                android:text="⋮"
-                android:textColor="#FFFFFF"
-                android:textSize="26sp" />
+                android:scaleType="center"
+                android:src="@drawable/ic_more_vert" />
         </RelativeLayout>
 
         <LinearLayout
