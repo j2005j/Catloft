@@ -423,12 +423,17 @@ public class HomeActivity extends Activity {
     }
 
     /**
-     * The ⋮ button sits in its own fixed 56dp row, which is pure spacer as far as the clock
-     * is concerned — 112px of a 720px-tall landscape screen, which is where the battery was
-     * ending up underneath the tiles. In landscape the clock block is pulled up into that row
-     * with a negative top margin: because the block is the weighted child, it simply grows
-     * upward, so the button keeps its row, the tiles do not move, and the clock gets those
-     * 112px back. Portrait keeps the exact layout it had.
+     * The ⋮ button used to occupy its own fixed 56dp row — 112px of a 720px landscape
+     * screen, and the reason the battery ended up under the tiles. The row is gone: the
+     * button floats in the root layout, and {@code clockBlock} holds the row's space in
+     * portrait with a positive {@code layout_marginTop="56dp"} that is cleared here in
+     * landscape, so the clock block simply grows into that space.
+     *
+     * <p>Why positive-and-clear, not negative-and-overlap: a vertical {@code LinearLayout}
+     * clamps a negative child margin against zero while <em>measuring</em> but honours it
+     * while <em>laying out</em> — the block moved up without growing, the tiles moved up
+     * with it and 112px of dead space appeared at the bottom. Measured on device; that
+     * version is the reason this method exists.
      */
     private void applyClockRoom() {
         if (clockBlock == null) {
@@ -436,7 +441,7 @@ public class HomeActivity extends Activity {
         }
         boolean landscape = getResources().getConfiguration().orientation
                 == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
-        int want = landscape ? -Ui.dp(this, 56) : 0;
+        int want = landscape ? 0 : Ui.dp(this, 56);
         ViewGroup.LayoutParams raw = clockBlock.getLayoutParams();
         if (!(raw instanceof LinearLayout.LayoutParams)) {
             return;

@@ -26,30 +26,16 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="56dp">
-
-            <!-- Material "more_vert" instead of the "⋮" glyph: an ImageView so the 24dp
-                 icon sits at its own size inside the 48dp touch target. -->
-            <ImageView
-                android:id="@+id/btnMenu"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:layout_marginEnd="8dp"
-                android:background="?android:attr/selectableItemBackgroundBorderless"
-                android:clickable="true"
-                android:contentDescription="Menu"
-                android:scaleType="center"
-                android:src="@drawable/ic_more_vert" />
-        </RelativeLayout>
-
+        <!-- The ⋮ button is no longer in a 56dp row of its own: that row was 112px of pure
+             spacer in a 720px landscape screen. It now floats in the root FrameLayout at the
+             same top-right spot it always had (4dp/8dp margins = its old position inside the
+             row), and clockBlock keeps the row's space with a *positive* 56dp top margin that
+             applyClockRoom() clears in landscape. -->
         <LinearLayout
             android:id="@+id/clockBlock"
             android:layout_width="match_parent"
             android:layout_height="0dp"
+            android:layout_marginTop="56dp"
             android:layout_weight="1"
             android:gravity="center"
             android:orientation="vertical"
@@ -92,6 +78,22 @@
             android:paddingStart="12dp"
             android:paddingEnd="12dp" />
     </LinearLayout>
+
+    <!-- Floating ⋮ (Material "more_vert"), top-right: 4dp/8dp margins put it exactly where
+         it sat inside the old spacer row. Declared after homeContent (drawn on top of it)
+         and before the lock overlay (the lock covers it). -->
+    <ImageView
+        android:id="@+id/btnMenu"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="4dp"
+        android:layout_marginEnd="8dp"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:contentDescription="Menu"
+        android:scaleType="center"
+        android:src="@drawable/ic_more_vert" />
 
     <com.catloft.launcher.LockOverlayView
         android:id="@+id/lockOverlay"
