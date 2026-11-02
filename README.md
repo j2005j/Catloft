@@ -5,7 +5,8 @@
 <h1 align="center">Catloft</h1>
 
 <p align="center">
-  A minimalist home-screen launcher for the CAT S60 (Android 6.0.1).
+  A minimalist home-screen launcher for <strong>CAT phones</strong> — built for the family,
+  tested on a CAT S60 (Android 6.0.1).
 </p>
 
 ---
@@ -15,14 +16,18 @@ time, the battery, and three big shortcuts. Black by default, one accent color,
 no clutter. Built in pure Java with **zero dependencies** — just the Android
 framework.
 
+<p align="center">
+  <img src="art/screenshot-home.png" width="360" alt="Catloft home screen: date, time, battery and three tiles">
+</p>
+
 ## Features
 
 - **Big clock** — date, time (12/24h follows system) and battery percentage;
   turns red at ≤ 15%.
 - **Hidden status bar** — non-immersive fullscreen, so a swipe down from the
   top still opens the notification drawer.
-- **3 customizable tiles** — defaults: MyFLIR, Android Settings, Google
-  Photos. Tap to launch, long-press to reassign any app.
+- **3 customizable tiles** — defaults: MyFLIR (on devices that ship it), Android
+  Settings, Google Photos. Tap to launch, long-press to reassign any app.
 - **⋮ menu** — app drawer, change wallpaper, launcher settings. **Swipe up** on
   the home screen also opens the drawer — an optional toggle, off by default.
 - **Swipe down** on the home screen opens the notification shade — optional,
@@ -57,7 +62,8 @@ framework.
 ```
 
 Requires JDK 17 and an Android SDK (compileSdk 34; `local.properties` pins
-`sdk.dir`). `minSdk`/`targetSdk` are 23 — the device runs Marshmallow.
+`sdk.dir`). `minSdk`/`targetSdk` are 23, matching the Marshmallow-based CAT
+phones it is built for — the one it is tested on runs 6.0.1.
 
 ## Permissions
 
