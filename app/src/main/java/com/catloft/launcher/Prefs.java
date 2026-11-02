@@ -15,14 +15,12 @@ public final class Prefs {
     static final String ICON_SCALE = "icon_scale";
     static final String DIM = "dim";
     static final String BLUR = "blur";
-    static final String BLUR_HOME = "blur_home";
     static final String BLUR_LOCK = "blur_lock";
 
     static final String KILLER_ON = "killer_on";
     static final String KILLER_INTERVAL = "killer_interval";
     static final String KILLER_MODE = "killer_mode";
     static final String KILLER_APPS = "killer_apps";
-    static final String KILLER_SYS_ON = "killer_sys_on";
     static final String KILLER_SYS_APPS = "killer_sys_apps";
     static final String KILLER_LAST = "killer_last";
 
@@ -90,14 +88,6 @@ public final class Prefs {
         p(c).edit().putInt(BLUR, v).apply();
     }
 
-    static boolean blurHome(Context c) {
-        return p(c).getBoolean(BLUR_HOME, true);
-    }
-
-    static void setBlurHome(Context c, boolean v) {
-        p(c).edit().putBoolean(BLUR_HOME, v).apply();
-    }
-
     static boolean blurLock(Context c) {
         return p(c).getBoolean(BLUR_LOCK, false);
     }
@@ -134,25 +124,22 @@ public final class Prefs {
     }
 
     static Set<String> killerApps(Context c) {
-        Set<String> def = new HashSet<>();
-        def.add("com.flir.halo"); // MyFLIR out of RAM by default
-        return strSet(c, KILLER_APPS, def);
+        // Empty by default: MyFLIR is a FLAG_SYSTEM package and lives in the system list
+        // below — the regular list only ever shows non-system apps.
+        return strSet(c, KILLER_APPS, new HashSet<String>());
     }
 
     static void setKillerApps(Context c, Set<String> v) {
         p(c).edit().putStringSet(KILLER_APPS, new HashSet<>(v)).apply();
     }
 
-    static boolean killerSysOn(Context c) {
-        return p(c).getBoolean(KILLER_SYS_ON, false);
-    }
-
-    static void setKillerSysOn(Context c, boolean v) {
-        p(c).edit().putBoolean(KILLER_SYS_ON, v).apply();
-    }
-
     static Set<String> killerSysApps(Context c) {
-        return strSet(c, KILLER_SYS_APPS, new HashSet<String>());
+        // MyFLIR out of RAM by default — the user's original setup. System kills are
+        // active exactly while this set is non-empty: the list *is* the opt-in, there is
+        // no separate warning tick.
+        Set<String> def = new HashSet<>();
+        def.add("com.flir.halo");
+        return strSet(c, KILLER_SYS_APPS, def);
     }
 
     static void setKillerSysApps(Context c, Set<String> v) {

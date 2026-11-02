@@ -61,6 +61,8 @@ public class HomeActivity extends Activity {
     private String[] tileSpecs = new String[3];
     private GestureDetector gesture;
     private PopupWindow currentPopup;
+    /** True while the home screen itself is in front — the gate for a mapped Home press. */
+    private boolean homeResumed;
 
     private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
         @Override
@@ -169,17 +171,16 @@ public class HomeActivity extends Activity {
                     // Swipe down → notification shade. The direct API is signature-gated, so
                     // this goes through Catloft's own accessibility service: the gesture only
                     // counts when the user has switched that on (Settings → Accessibility).
-                    if (!Prefs.swipeDownShade(HomeActivity.this)) {
+                    boolean pref = Prefs.swipeDownShade(HomeActivity.this);
+                    boolean svc = CatloftAccessibilityService.isEnabled(HomeActivity.this);
+                    if (!pref) {
                         return false;
                     }
-                    if (!CatloftAccessibilityService.isEnabled(HomeActivity.this)) {
+                    if (!svc) {
                         toast("Turn on Catloft's swipe-down in Settings › Accessibility");
                         return true;
                     }
-                    if (!CatloftAccessibilityService.openNotifications()) {
-                        toast("Accessibility service isn't ready yet — try again");
-                        return true;
-                    }
+                    openShade();
                     return true;
                 }
                 return false;
@@ -226,12 +227,14 @@ public class HomeActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        homeResumed = true;
         hideSystemBars();
         updateClock();
         refreshAccent();
         setupTiles();
         reloadWallpaper();
         applyOrientation();
+        applyHomeKeyFlag();
         // Catloft owns the screen again: the system-wide lock (if it was up over another
         // app) hands the lock back, and exactly one overlay ends up visible.
         LockOverlayWindow.release();
@@ -240,6 +243,12 @@ public class HomeActivity extends Activity {
         } else {
             lockOverlay.setVisibility(View.GONE);
         }
+    }
+
+    @Override
+    protected void onPause() {
+        homeResumed = false;
+        super.onPause();
     }
 
     @Override
@@ -277,18 +286,71 @@ public class HomeActivity extends Activity {
     }
 
     /**
-     * Catloft is {@code launchMode="singleTask"}, so the system Home key arrives here instead
-     * of creating a second instance. With a Home app mapped, that is where it launches.
+     * Catloft is {@code launchMode="singleTask"}, so a Home press that arrives as an intent
+     * lands here instead of creating a second instance. The mapped app is launched only when
+     * the home screen was <em>already</em> showing ({@code homeResumed}) and it is not locked:
+     * otherwise one press from inside an app would jump straight to another app and the user
+     * could never get home. The primary path for a press made while on the home screen is
+     * {@link #onKeyDown(int, KeyEvent)} — this is the fallback for the case where the system
+     * still delivers Home as an intent.
      */
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
         String homeKeyApp = Prefs.homeKeyApp(this);
-        if (homeKeyApp != null && homeKeyApp.length() > 0) {
+        android.util.Log.d("Catloft", "onNewIntent homeResumed=" + homeResumed
+                + " locked=" + isLocked() + " spec='" + homeKeyApp + "'");
+        if (homeKeyApp != null && homeKeyApp.length() > 0 && homeResumed && !isLocked()) {
             if (!AppResolver.launchKey(this, homeKeyApp)) {
                 toast("That Home app is no longer installed");
             }
+        }
+    }
+
+    /**
+     * The path that actually catches "Home pressed while already on the home screen":
+     * {@code FLAG_HOMEKEY_DISPATCHED} (applied by {@link #applyHomeKeyFlag()} only while a
+     * mapping exists) makes the system hand the key to this window instead of handling it
+     * itself. The flag lives on this window only, so anywhere else Home still behaves
+     * normally and just brings the user home — the mapping never hijacks the key.
+     */
+    @Override
+    public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
+        if (keyCode == android.view.KeyEvent.KEYCODE_HOME) {
+            String spec = Prefs.homeKeyApp(this);
+            boolean mapped = spec != null && spec.length() > 0;
+            android.util.Log.d("Catloft", "onKeyDown HOME mapped=" + mapped
+                    + " locked=" + isLocked());
+            if (mapped && !isLocked()) {
+                if (!AppResolver.launchKey(this, spec)) {
+                    toast("That Home app is no longer installed");
+                }
+                return true; // consumed, so the key cannot fall through to anything else
+            }
+            if (mapped) {
+                return true; // locked: Home does nothing while the slide lock is up
+            }
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    /**
+     * Ask the system to route Home to this window while a Home app is mapped. Called from
+     * onResume, so it follows the preference in both directions.
+     *
+     * <p>The value is {@code WindowManager.LayoutParams.FLAG_HOMEKEY_DISPATCHED} (0x40000000),
+     * which the platform has honoured since API 1 but which no longer appears in the public
+     * SDK — hence the literal, with a comment, rather than a compile error.
+     */
+    private void applyHomeKeyFlag() {
+        final int FLAG_HOMEKEY_DISPATCHED = 0x40000000;
+        String spec = Prefs.homeKeyApp(this);
+        boolean intercept = spec != null && spec.length() > 0;
+        if (intercept) {
+            getWindow().addFlags(FLAG_HOMEKEY_DISPATCHED);
+        } else {
+            getWindow().clearFlags(FLAG_HOMEKEY_DISPATCHED);
         }
     }
 
@@ -327,6 +389,48 @@ public class HomeActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(
                 android.view.View.SYSTEM_UI_FLAG_FULLSCREEN
                         | android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+    }
+
+    /**
+     * Opens the notification shade through the accessibility service — with our fullscreen
+     * flags dropped first.
+     *
+     * <p>Measured on this device: SystemUI <em>accepts</em> the expand over a fullscreen
+     * window ({@code performGlobalAction} returns true) but only <em>renders</em> it at the
+     * next input event, so the shade popped open seconds later, on top of whatever the next
+     * gesture did (the "held back" behaviour). The same expand over a non-fullscreen window
+     * renders immediately, and the status-bar touch path is unaffected either way. So the
+     * flags come down for the call; {@link #hideSystemBars()} puts them back on the next
+     * focus/resume, with a fallback for the case where focus never leaves this window.
+     */
+    private void openShade() {
+        final View decor = getWindow().getDecorView();
+        getWindow().setFlags(0, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        decor.setSystemUiVisibility(android.view.View.SYSTEM_UI_FLAG_VISIBLE);
+        decor.post(new Runnable() {
+            @Override
+            public void run() {
+                boolean ok = CatloftAccessibilityService.openNotifications();
+                if (!ok) {
+                    // Not connected: Android keeps a service listed after the app is updated
+                    // without rebinding it, so tell the user the fix instead of "try again".
+                    hideSystemBars();
+                    toast("Shade service is disconnected — switch it off and on in "
+                            + "Settings › Accessibility");
+                    return;
+                }
+                decor.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (decor.hasWindowFocus()) {
+                            // Focus never moved: the shade did not open. Restore the flags
+                            // so the home screen is not left showing a status bar.
+                            hideSystemBars();
+                        }
+                    }
+                }, 800);
+            }
+        });
     }
 
     /**

@@ -37,7 +37,6 @@ public class KillReceiver extends BroadcastReceiver {
 
         boolean allMode = !"selected".equals(Prefs.killerMode(c));
         Set<String> selected = Prefs.killerApps(c);
-        boolean sysOn = Prefs.killerSysOn(c);
         Set<String> sysAllowed = Prefs.killerSysApps(c);
         String self = c.getPackageName();
 
@@ -50,8 +49,9 @@ public class KillReceiver extends BroadcastReceiver {
             }
             boolean system = (ai.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
             if (system) {
-                // system apps only when the red warning is ticked AND they were picked
-                if (!sysOn || !sysAllowed.contains(pkg)) {
+                // System apps only when explicitly listed: the list itself is the opt-in
+                // (there is no separate warning tick any more). Empty list = none die.
+                if (!sysAllowed.contains(pkg)) {
                     continue;
                 }
             } else if (!allMode && !selected.contains(pkg)) {

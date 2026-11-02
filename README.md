@@ -28,20 +28,22 @@ framework.
 - **Swipe down** on the home screen opens the notification shade — optional,
   off by default, and it needs Catloft's accessibility service switched on in
   Android's own settings (Android will not let an app open the shade itself).
-- **Programmable Home / Back keys** — map the Home key (when Catloft is your
-  default launcher) or Back-on-home to any app. Off by default: the empty
-  mapping is today's behaviour.
+- **Programmable Home / Back keys** — map the Home key or Back-on-home to any
+  app. Off by default: the empty mapping is today's behaviour. Home only fires
+  while you are already home (so it never hijacks the key from another app).
 - **Double-tap to lock** — turns the screen off from the home screen. Off by
   default; turning it on asks Android to activate Catloft as a device
   administrator (the only policy that grants is turning the screen off).
 - **Portrait by default** — auto-rotation is a separate opt-in setting.
 - **Wallpaper control** — pick from gallery or reuse the system wallpaper;
-  dimness 0–100%, blur 0–100% (pre-rendered once, applied to home and/or
-  lock screen). Default: pure black.
+  dimness 0–100%, blur 0–100% (pre-rendered once; **0% is off**, anything above
+  it applies to the home screen, plus an "Apply as system wallpaper" toggle).
+  Default: pure black.
 - **App drawer** — simple list, locale-sorted, with an **app hider**.
 - **Automatic app killer** — kills *background* processes on a schedule
-  (15 min – 24 h), all apps or a selected set. System apps only behind an
-  explicit red warning plus per-app selection.
+  (15 min – 24 h), all apps or a selected set. System apps live in their own
+  list (MyFLIR preselected) under a standing red warning — clear that list and
+  no system app is ever touched.
 - **Color scheme** — Material palette picker with recents and an advanced
   H/S/V + hex dialog. Default `#FFCC01` (CAT yellow).
 - **Slide-to-unlock** (off by default) — a ball you drag to get past, as a guard
@@ -62,7 +64,7 @@ Requires JDK 17 and an Android SDK (compileSdk 34; `local.properties` pins
 | Permission | Why |
 | --- | --- |
 | `KILL_BACKGROUND_PROCESSES` | the automatic app killer |
-| `SET_WALLPAPER` | "apply blur to lock screen" (Android 6 has no separate lock wallpaper) |
+| `SET_WALLPAPER` | "Apply as system wallpaper" (Android 6 has no separate lock wallpaper) |
 | `RECEIVE_BOOT_COMPLETED` | re-arm the killer schedule after a reboot |
 | `SYSTEM_ALERT_WINDOW` | the optional "lock over other apps" — nothing is ever drawn over another app until you grant it in Android's "draw over other apps" screen |
 | *Accessibility service* — not a permission; you switch it on yourself in Settings → Accessibility | swipe down opens the notification shade (Android refuses to let an app do this any other way) |
@@ -76,9 +78,14 @@ Requires JDK 17 and an Android SDK (compileSdk 34; `local.properties` pins
   Android's own lock screen still appears first, and only after it Catloft's
   ball. Keep the system lock — it is the real one.
 - The Home/Back mappings are scoped by where Android hands the keys: Home only
-  reaches Catloft when Catloft is your default launcher (you'll see a brief
-  flash of home before the mapped app opens), and Back only fires while Catloft
-  is on screen — inside another app, Back belongs to that app.
+  fires while you are already on the home screen — Home from another app still
+  just brings you home (press it again there to open the mapped app), and it
+  needs Catloft to be your default launcher. Back only fires while Catloft is on
+  screen — inside another app, Back belongs to that app.
+- After sideloading an update, switch the accessibility service off and on once
+  in Settings → Accessibility: Android leaves the service listed but does not
+  rebind it after the app is replaced, and the swipe-down gesture needs a live
+  connection.
 
 ## License
 

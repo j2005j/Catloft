@@ -40,7 +40,7 @@ public class SettingsActivity extends Activity {
             sumTarget, sumApps, sumSysApps, sumHider, sumTiles, sumColor, sumSlide,
             sumRotate, sumSwipeUp, sumDoubleTap, sumHomeKey, sumBackKey, sumSwipeDown,
             sumOverlay;
-    private CheckBox checkBlurHome, checkBlurLock, checkKillerSystem;
+    private CheckBox checkBlurLock;
     private Switch switchKiller, switchSlide, switchRotate, switchSwipeUp, switchDoubleTap,
             switchSwipeDown;
     private View rowKiller, rowKillerSchedule, rowKillerTarget, rowKillerApps,
@@ -79,9 +79,7 @@ public class SettingsActivity extends Activity {
         sumTiles = (TextView) findViewById(R.id.sumTiles);
         sumColor = (TextView) findViewById(R.id.sumColor);
         sumSlide = (TextView) findViewById(R.id.sumSlide);
-        checkBlurHome = (CheckBox) findViewById(R.id.checkBlurHome);
         checkBlurLock = (CheckBox) findViewById(R.id.checkBlurLock);
-        checkKillerSystem = (CheckBox) findViewById(R.id.checkKillerSystem);
         switchKiller = (Switch) findViewById(R.id.switchKiller);
         switchSlide = (Switch) findViewById(R.id.switchSlide);
         switchRotate = (Switch) findViewById(R.id.switchRotate);
@@ -197,17 +195,6 @@ public class SettingsActivity extends Activity {
             }
         });
 
-        checkBlurHome.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Prefs.setBlurHome(SettingsActivity.this, checkBlurHome.isChecked());
-                if (checkBlurHome.isChecked() && Prefs.blur(SettingsActivity.this) > 0) {
-                    WallpaperHelper.refreshBlurred(SettingsActivity.this, null);
-                }
-                refreshSummaries();
-            }
-        });
-
         checkBlurLock.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -288,7 +275,7 @@ public class SettingsActivity extends Activity {
             @Override
             public void onClick(View v) {
                 pickApps("Selected apps", AppResolver.nonSystemApps(SettingsActivity.this),
-                        Prefs.killerApps(SettingsActivity.this), false,
+                        Prefs.killerApps(SettingsActivity.this),
                         new StringSetHandler() {
                             @Override
                             public void onSet(Set<String> selected) {
@@ -299,33 +286,14 @@ public class SettingsActivity extends Activity {
             }
         });
 
-        checkKillerSystem.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (checkKillerSystem.isChecked()) {
-                    if (Prefs.killerSysApps(SettingsActivity.this).isEmpty()) {
-                        // red warning requires an explicit system-app selection first
-                        openSystemPickerForEnabling();
-                    } else {
-                        Prefs.setKillerSysOn(SettingsActivity.this, true);
-                        refreshSummaries();
-                    }
-                } else {
-                    Prefs.setKillerSysOn(SettingsActivity.this, false);
-                    refreshSummaries();
-                }
-            }
-        });
-
+        // No warning tick any more: the row is always reachable, and the list it holds is
+        // itself the permission to kill those system apps (MyFLIR is preselected in it).
         rowKillerSysApps.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!Prefs.killerSysOn(SettingsActivity.this)) {
-                    return;
-                }
                 pickApps("System apps allowed to be killed",
                         AppResolver.systemApps(SettingsActivity.this),
-                        Prefs.killerSysApps(SettingsActivity.this), true,
+                        Prefs.killerSysApps(SettingsActivity.this),
                         new StringSetHandler() {
                             @Override
                             public void onSet(Set<String> selected) {
@@ -341,7 +309,7 @@ public class SettingsActivity extends Activity {
             public void onClick(View v) {
                 pickApps("Hidden apps (from Catloft's drawer)",
                         AppResolver.launchableApps(SettingsActivity.this),
-                        Prefs.hiddenApps(SettingsActivity.this), false,
+                        Prefs.hiddenApps(SettingsActivity.this),
                         new StringSetHandler() {
                             @Override
                             public void onSet(Set<String> selected) {
@@ -571,14 +539,17 @@ public class SettingsActivity extends Activity {
                 .show();
     }
 
-    /** Multi-select app picker; when requireOne, OK stays disabled-looking until ≥1 is ticked. */
+    /**
+     * Multi-select app picker for the two killer lists. Each list is homogeneous — the
+     * regular one holds non-system apps only, the other system apps only — so no "(system)"
+     * tag is shown; the list's own title says which kind it is.
+     */
     private void pickApps(String title, final List<AppResolver.AppEntry> apps,
-                          Set<String> current, final boolean requireOne,
-                          final StringSetHandler handler) {
+                          Set<String> current, final StringSetHandler handler) {
         final String[] labels = new String[apps.size()];
         final boolean[] checked = new boolean[apps.size()];
         for (int i = 0; i < apps.size(); i++) {
-            labels[i] = apps.get(i).label + (apps.get(i).system ? "  (system)" : "");
+            labels[i] = apps.get(i).label;
             checked[i] = current.contains(apps.get(i).pkg);
         }
         AlertDialog.Builder b = new AlertDialog.Builder(this)
@@ -607,12 +578,8 @@ public class SettingsActivity extends Activity {
                                         out.add(apps.get(i).pkg);
                                     }
                                 }
-                                if (requireOne && out.isEmpty()) {
-                                    Toast.makeText(SettingsActivity.this,
-                                            "Pick at least one — or untick the red warning",
-                                            Toast.LENGTH_SHORT).show();
-                                    return;
-                                }
+                                // Empty is a valid answer: clearing the system list turns
+                                // system kills off again (there is no warning tick).
                                 handler.onSet(out);
                                 d.dismiss();
                             }
@@ -621,67 +588,6 @@ public class SettingsActivity extends Activity {
                         new View.OnClickListener() {
                             @Override
                             public void onClick(View v) {
-                                d.dismiss();
-                            }
-                        });
-            }
-        });
-        d.show();
-        tintDialogButtons(d);
-    }
-
-    /** Enabling the red system-kill warning demands an explicit selection. */
-    private void openSystemPickerForEnabling() {
-        final List<AppResolver.AppEntry> apps = AppResolver.systemApps(this);
-        final String[] labels = new String[apps.size()];
-        final boolean[] checked = new boolean[apps.size()];
-        for (int i = 0; i < apps.size(); i++) {
-            labels[i] = apps.get(i).label;
-        }
-        AlertDialog d = new AlertDialog.Builder(this)
-                .setTitle("⚠ Which system apps may be killed?")
-                .setMultiChoiceItems(labels, checked,
-                        new DialogInterface.OnMultiChoiceClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which,
-                                                boolean isChecked) {
-                                checked[which] = isChecked;
-                            }
-                        })
-                .setPositiveButton("Enable", null)
-                .setNegativeButton("Cancel", null)
-                .create();
-        d.setOnShowListener(new android.content.DialogInterface.OnShowListener() {
-            @Override
-            public void onShow(android.content.DialogInterface dialog) {
-                d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(
-                        new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                Set<String> out = new HashSet<>();
-                                for (int i = 0; i < apps.size(); i++) {
-                                    if (checked[i]) {
-                                        out.add(apps.get(i).pkg);
-                                    }
-                                }
-                                if (out.isEmpty()) {
-                                    Toast.makeText(SettingsActivity.this,
-                                            "Select at least one system app",
-                                            Toast.LENGTH_LONG).show();
-                                    return;
-                                }
-                                Prefs.setKillerSysApps(SettingsActivity.this, out);
-                                Prefs.setKillerSysOn(SettingsActivity.this, true);
-                                refreshSummaries();
-                                d.dismiss();
-                            }
-                        });
-                d.getButton(AlertDialog.BUTTON_NEGATIVE).setOnClickListener(
-                        new View.OnClickListener() {
-                            @Override
-                            public void onClick(View v) {
-                                checkKillerSystem.setChecked(false); // declined
-                                refreshSummaries();
                                 d.dismiss();
                             }
                         });
@@ -756,9 +662,7 @@ public class SettingsActivity extends Activity {
         Ui.tintSwitch(switchSwipeUp, accent);
         Ui.tintSwitch(switchDoubleTap, accent);
         Ui.tintSwitch(switchSwipeDown, accent);
-        Ui.tintCheckBox(checkBlurHome, accent);
         Ui.tintCheckBox(checkBlurLock, accent);
-        // checkKillerSystem stays danger-red on purpose
 
         tintSections(findViewById(android.R.id.content), accent);
     }
@@ -786,7 +690,6 @@ public class SettingsActivity extends Activity {
         sumDim.setText(Prefs.dim(this) + "%");
         int blur = Prefs.blur(this);
         sumBlur.setText(blur == 0 ? "Off" : blur + "%");
-        checkBlurHome.setChecked(Prefs.blurHome(this));
         checkBlurLock.setChecked(Prefs.blurLock(this));
 
         boolean killerOn = Prefs.killerOn(this);
@@ -807,13 +710,11 @@ public class SettingsActivity extends Activity {
                 ? "Only selected apps" : "All background apps");
         sumApps.setText(Prefs.killerApps(this).size() + " selected");
 
-        boolean sysOn = Prefs.killerSysOn(this);
-        checkKillerSystem.setChecked(sysOn);
+        // The system list is the whole opt-in: non-empty means those system apps are
+        // killed, empty means none are. No tick to keep in sync with any more.
         int sysCount = Prefs.killerSysApps(this).size();
         sumSysApps.setText(sysCount == 0
-                ? "None selected — required" : sysCount + " selected");
-        rowKillerSysApps.setAlpha(sysOn ? 1f : 0.45f);
-        rowKillerSysApps.setClickable(sysOn);
+                ? "None — no system apps are killed" : sysCount + " selected");
 
         float subAlpha = killerOn ? 1f : 0.45f;
         rowKillerSchedule.setAlpha(subAlpha);

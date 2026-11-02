@@ -175,7 +175,9 @@ final class WallpaperHelper {
         if (!hasWallpaper(c)) {
             return null;
         }
-        if (Prefs.blur(c) > 0 && Prefs.blurHome(c)) {
+        // The blur slider is the only switch: 0% means no blur, anything above 0 means the
+        // blurred copy goes to the home screen (there used to be a separate tick box).
+        if (Prefs.blur(c) > 0) {
             Bitmap b = loadBlurred(c);
             if (b != null) {
                 return b;
@@ -185,10 +187,10 @@ final class WallpaperHelper {
     }
 
     /**
-     * Keeps the system wallpaper in sync with the lock toggle: applies the blurred
-     * (or original) image when "apply to lock" is on, restores the previous system
-     * wallpaper when it is off. Android 6 has no separate lock wallpaper — the
-     * system wallpaper is what the lock screen shows.
+     * Keeps the system wallpaper in sync with the toggle: applies the blurred (or original)
+     * image when "apply as system wallpaper" is on, restores the previous system wallpaper
+     * when it is off. Android 6 has no separate lock wallpaper — the system wallpaper is
+     * what the lock screen shows.
      */
     static void refreshLockWallpaper(final Context c) {
         io.execute(new Runnable() {
