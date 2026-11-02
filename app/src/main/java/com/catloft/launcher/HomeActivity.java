@@ -61,8 +61,15 @@ public class HomeActivity extends Activity {
     private String[] tileSpecs = new String[3];
     private GestureDetector gesture;
     private PopupWindow currentPopup;
-    /** True while the home screen itself is in front — the gate for a mapped Home press. */
-    private boolean homeResumed;
+    /**
+     * True while this activity is stopped, i.e. while something else (another app, our own
+     * settings/drawer) has the screen. This — not "is resumed" — is what tells a Home press
+     * apart: the system pauses us before delivering a new HOME intent even when we were the
+     * screen the user was looking at, so {@code homeResumed} was false on *every* press and
+     * the mapping could never fire. Stopped means "not on the home screen"; started means
+     * "the home screen was showing, and the mapping may run".
+     */
+    private boolean homeStopped;
 
     private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
         @Override
@@ -227,14 +234,12 @@ public class HomeActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        homeResumed = true;
         hideSystemBars();
         updateClock();
         refreshAccent();
         setupTiles();
         reloadWallpaper();
         applyOrientation();
-        applyHomeKeyFlag();
         // Catloft owns the screen again: the system-wide lock (if it was up over another
         // app) hands the lock back, and exactly one overlay ends up visible.
         LockOverlayWindow.release();
@@ -246,9 +251,15 @@ public class HomeActivity extends Activity {
     }
 
     @Override
-    protected void onPause() {
-        homeResumed = false;
-        super.onPause();
+    protected void onStart() {
+        super.onStart();
+        homeStopped = false; // the home screen is on screen again
+    }
+
+    @Override
+    protected void onStop() {
+        homeStopped = true; // another app (or our own sub-screen) has taken the screen
+        super.onStop();
     }
 
     @Override
@@ -286,71 +297,28 @@ public class HomeActivity extends Activity {
     }
 
     /**
-     * Catloft is {@code launchMode="singleTask"}, so a Home press that arrives as an intent
-     * lands here instead of creating a second instance. The mapped app is launched only when
-     * the home screen was <em>already</em> showing ({@code homeResumed}) and it is not locked:
-     * otherwise one press from inside an app would jump straight to another app and the user
-     * could never get home. The primary path for a press made while on the home screen is
-     * {@link #onKeyDown(int, KeyEvent)} — this is the fallback for the case where the system
-     * still delivers Home as an intent.
+     * The only path this device actually delivers for the Home key: every press arrives here
+     * (verified in logcat — {@code onKeyDown(KEYCODE_HOME)} never fires, and
+     * {@code FLAG_HOMEKEY_DISPATCHED} is not honoured by this build).
+     *
+     * <p>The mapping runs only when the home screen was showing beforehand, judged by
+     * <em>stopped-or-not</em> rather than by resumed: the system pauses us before handing
+     * over a new HOME intent, so "was I resumed at this moment" is false even when the user
+     * was standing on the home screen — which is exactly why the mapping did nothing at all.
+     * {@code homeStopped} instead records whether something else had the screen: press Home
+     * from inside an app and it is true (come home, launch nothing); press Home again once
+     * home is showing and it is false (launch the mapped app). Never while locked.
      */
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
         String homeKeyApp = Prefs.homeKeyApp(this);
-        android.util.Log.d("Catloft", "onNewIntent homeResumed=" + homeResumed
-                + " locked=" + isLocked() + " spec='" + homeKeyApp + "'");
-        if (homeKeyApp != null && homeKeyApp.length() > 0 && homeResumed && !isLocked()) {
+        boolean homeWasShowing = !homeStopped;
+        if (homeKeyApp != null && homeKeyApp.length() > 0 && homeWasShowing && !isLocked()) {
             if (!AppResolver.launchKey(this, homeKeyApp)) {
                 toast("That Home app is no longer installed");
             }
-        }
-    }
-
-    /**
-     * The path that actually catches "Home pressed while already on the home screen":
-     * {@code FLAG_HOMEKEY_DISPATCHED} (applied by {@link #applyHomeKeyFlag()} only while a
-     * mapping exists) makes the system hand the key to this window instead of handling it
-     * itself. The flag lives on this window only, so anywhere else Home still behaves
-     * normally and just brings the user home — the mapping never hijacks the key.
-     */
-    @Override
-    public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
-        if (keyCode == android.view.KeyEvent.KEYCODE_HOME) {
-            String spec = Prefs.homeKeyApp(this);
-            boolean mapped = spec != null && spec.length() > 0;
-            android.util.Log.d("Catloft", "onKeyDown HOME mapped=" + mapped
-                    + " locked=" + isLocked());
-            if (mapped && !isLocked()) {
-                if (!AppResolver.launchKey(this, spec)) {
-                    toast("That Home app is no longer installed");
-                }
-                return true; // consumed, so the key cannot fall through to anything else
-            }
-            if (mapped) {
-                return true; // locked: Home does nothing while the slide lock is up
-            }
-        }
-        return super.onKeyDown(keyCode, event);
-    }
-
-    /**
-     * Ask the system to route Home to this window while a Home app is mapped. Called from
-     * onResume, so it follows the preference in both directions.
-     *
-     * <p>The value is {@code WindowManager.LayoutParams.FLAG_HOMEKEY_DISPATCHED} (0x40000000),
-     * which the platform has honoured since API 1 but which no longer appears in the public
-     * SDK — hence the literal, with a comment, rather than a compile error.
-     */
-    private void applyHomeKeyFlag() {
-        final int FLAG_HOMEKEY_DISPATCHED = 0x40000000;
-        String spec = Prefs.homeKeyApp(this);
-        boolean intercept = spec != null && spec.length() > 0;
-        if (intercept) {
-            getWindow().addFlags(FLAG_HOMEKEY_DISPATCHED);
-        } else {
-            getWindow().clearFlags(FLAG_HOMEKEY_DISPATCHED);
         }
     }
 

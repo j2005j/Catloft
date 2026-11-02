@@ -133,14 +133,16 @@
                 android:textColor="#757575"
                 android:textSize="12sp" />
 
-            <!-- 26dp, not 16dp: TouchWiz draws the tick's drawable ~10dp left of the
-                 padding, and the row text column starts at 16dp/34px — measured on the
-                 device. This lines the tick up with everything else. -->
+            <!-- TouchWiz positions the tick's drawable from the *view's* edge and ignores
+                 paddingStart for it: measured, padding 16dp → 26dp moved the label but left
+                 the tick at x=14px while the text column starts at x=33px. The margin is
+                 what slides the tick onto that column. -->
             <CheckBox
                 android:id="@+id/checkBlurLock"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingStart="26dp"
+                android:layout_marginStart="10dp"
+                android:paddingStart="16dp"
                 android:paddingEnd="16dp"
                 android:text="Apply as system wallpaper"
                 android:textColor="#FFFFFF"
