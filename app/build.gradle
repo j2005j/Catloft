@@ -10,8 +10,8 @@ android {
         applicationId "com.catloft.launcher"
         minSdk 23
         targetSdk 23
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.0.1"
     }
 
     // Release signing — only when keystore.properties (and catloft-release.jks) exist; both
